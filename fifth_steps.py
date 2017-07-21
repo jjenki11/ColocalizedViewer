@@ -26,7 +26,7 @@ import sys
 #import pyinotify
 
 
-using_windows=True
+using_windows=False
 runtime_location=""
 if(using_windows):
     runtime_location=os.path.dirname(os.path.abspath(__file__))+'\\'
@@ -244,12 +244,10 @@ class KeyboardInputDemoWindow( QWidget ) :
     def process_click1(self, event):
         fig = event.canvas.figure
         ax = fig.axes[0]
-        print(str(ax)+ "MRI    CLICKED at location ->  " + "(" + str(event.xdata) + ", " + str(event.ydata) + ")")
-        
-        
-        
+        print(str(ax)+ "MRI    CLICKED at location ->  " + "(" + str(event.xdata) + ", " + str(event.ydata) + ")")               
         
         jmg = JImage(self)
+        
         jmg.query_image(runtime_location+'smiley.png' , ['20', '20', '20', '20'])
         
         
