@@ -1,7 +1,10 @@
 import sys
 
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+#from PyQt4.QtCore import *
+#from PyQt4.QtGui import *
+
+from PySide.QtCore import *
+from PySide.QtGui import *
 
 import matplotlib
 
@@ -15,16 +18,88 @@ import nibabel
 import os
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-from skimage import io
+
 import sys
 
-import logging
-import re
-import pyinotify
+#import logging
+#import re
+#import pyinotify
+
+
+using_windows=True
+runtime_location=""
+if(using_windows):
+    runtime_location=os.path.dirname(os.path.abspath(__file__))+'\\'
+else:
+    runtime_location=os.path.dirname(os.path.abspath(__file__))+'/'
+    
+import subprocess
+
+  
+    
+    
+class JImage(object):
+    widget=None
+    def __init__(self,widg):
+        print("New jimage funkyness")
+        self.widget = widg
+        
+    def prepare_2d_data(self, fn):
+        data = mpimg.imread(runtime_location+fn)
+        plt.figure()
+        plt.imshow(data)
+    
+    
+    def query_image(self, image, query):
+        #This command could have multiple commands separated by a new line \n
+        #some_command = "export PATH=$PATH://server.sample.mo/app/bin \n customupload abc.txt"
+        
+        qstring=""
+        for i in range(len(query)):
+            qstring = qstring + " " + query[i]
+ 
+        print("WHAT IS IMAGE -> " + str(image))
+        print("WHAT IS QUERY -> " + str(qstring))
+ 
+        
+        some_command = runtime_location+"ImageHelper2 " + image + " " + qstring
+        
+        
+
+        p = subprocess.Popen(some_command, stdout=subprocess.PIPE, shell=True)
+
+        (output, err) = p.communicate()  
+
+        #This makes the wait possible
+        p_status = p.wait()
+
+        #This will give you the output of the command being executed
+        print "Command output: " + output  
+        
+        result = '\\'.join(image.split('\\')[:-1]) + "\\crop_result.jpg"
+    
+        print(result)
+        
+        from pathlib import Path
+
+        my_file = Path(result)
+        if my_file.is_file():
+            # file exists
+            print("FILE EXISTSSSS")
+            self.widget
+        
+#        "crop_result.jpg"
+    
+    
+    
+    
+    
+    
+
 
 
 def prepare_volume_data(fn):
-    data = nibabel.load(os.path.join('/stbb_home/jenkinsjc/Desktop/MRI_HISTO_VIEWER/', fn))
+    data = nibabel.load(os.path.join('', fn))
     sa = data.get_data()
     return sa.T
     
@@ -40,8 +115,8 @@ class KeyboardInputDemoWindow( QWidget ) :
         #  execution system whenever keys of the keyboard are pressed.
         #  They receive a QKeyEvent object as a parameter.
 
-        mri  = 'T2W_structural_registered_Affine.nii'
-        hist = 'fluorescent_reduce_8_structural_reoriented.nii'
+        mri  = runtime_location+'T2W_structural_registered_Affine.nii'
+        hist = runtime_location+'fluorescent_reduce_8_structural_reoriented.nii'
 
         mri_data = prepare_volume_data(mri)
         hist_data = prepare_volume_data(hist)
@@ -96,14 +171,17 @@ class KeyboardInputDemoWindow( QWidget ) :
         volume_control_hb.addWidget(self.slice_number)
         
         
-        main_vb = QVBoxLayout()
+        self.main_vb = QVBoxLayout()
         
         
-        main_vb.addLayout(linked_volumes_hb)
-        main_vb.addLayout(volume_control_hb)
+        self.main_vb.addLayout(linked_volumes_hb)
+        self.main_vb.addLayout(volume_control_hb)
         
    
-        self.setLayout(main_vb)
+        self.setLayout(self.main_vb)
+        
+        
+    
         
     def slice_text_change(self):
         cursor = self.slice_number.textCursor()
@@ -167,7 +245,29 @@ class KeyboardInputDemoWindow( QWidget ) :
         fig = event.canvas.figure
         ax = fig.axes[0]
         print(str(ax)+ "MRI    CLICKED at location ->  " + "(" + str(event.xdata) + ", " + str(event.ydata) + ")")
-        cmd = "/stbb_home/jenkinsjc/Desktop/MRI_HISTO_VIEWER/BAM_seychelles.jpg 1 2 3 4"        
+        
+        
+        
+        
+        jmg = JImage(self)
+        jmg.query_image(runtime_location+'smiley.png' , ['20', '20', '20', '20'])
+        
+        
+
+
+   
+        res_label = QLabel()
+        pmap = QPixmap(runtime_location+'smiley.png')
+        
+        res_label.setPixmap(pmap)
+        res_label.show()
+        
+        result_img = QHBoxLayout()
+        result_img.addWidget(res_label)
+        self.main_vb.addLayout(result_img)
+        self.update()
+        
+        #cmd = runtime_location+"BAM_seychelles.jpg 1 2 3 4"        
         
         #   Below is some rudimentary (blocking) code to monitor the directory for output files
         """
@@ -200,7 +300,12 @@ class KeyboardInputDemoWindow( QWidget ) :
         print("DONE DONE DONE.")
         print("Exit code -> " + str(e_code))
         print("Exit status -> " + str(e_status))            
-        
+  
+  
+"""
+pyinotify is not available for windows. this is not a sustainable solution for the time being but is possible
+to use with proper thread handling (QProcess could be used for multiple-inheritance)
+      
 class EventHandler (pyinotify.ProcessEvent):
     def __init__(self, file_path, *args, **kwargs):
         super(EventHandler, self).__init__(*args, **kwargs)
@@ -220,6 +325,7 @@ class EventHandler (pyinotify.ProcessEvent):
             for g in groups:
                 if g:
                     print g.string
+"""
 
 if __name__ == '__main__':
     this_application = QApplication( sys.argv )
