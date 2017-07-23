@@ -104,7 +104,7 @@ class KeyboardInputDemoWindow( QWidget ) :
         #  execution system whenever keys of the keyboard are pressed.
         #  They receive a QKeyEvent object as a parameter.
 
-        mri  = runtime_location+'T2W_structural_registered_Affine.nii'
+        mri  = runtime_location+'Output\StructuralToHistology.nii'
         hist = runtime_location+'fluorescent_reduce_8_structural_reoriented.nii'
 
         mri_data = prepare_volume_data(mri)
