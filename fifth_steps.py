@@ -26,7 +26,7 @@ import sys
 #import pyinotify
 
 
-using_windows=False
+using_windows=True
 runtime_location=""
 if(using_windows):
     runtime_location=os.path.dirname(os.path.abspath(__file__))+'\\'
@@ -62,9 +62,7 @@ class JImage(object):
         print("WHAT IS QUERY -> " + str(qstring))
  
         
-        some_command = runtime_location+"ImageHelper2 " + image + " " + qstring
-        
-        
+        some_command = runtime_location+"ImageHelper2 " + image + " " + qstring       
 
         p = subprocess.Popen(some_command, stdout=subprocess.PIPE, shell=True)
 
@@ -87,15 +85,6 @@ class JImage(object):
             # file exists
             print("FILE EXISTSSSS")
             self.widget
-        
-#        "crop_result.jpg"
-    
-    
-    
-    
-    
-    
-
 
 
 def prepare_volume_data(fn):
