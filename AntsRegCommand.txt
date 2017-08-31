@@ -5,3 +5,20 @@ ANTS 3 -m MI[C:\Users\jeff\Documents\Tortoise\ColocalizedViewer\fluorescent_redu
 
 
 WarpImageMultiTransform.exe 3 C:\Users\jeff\Documents\Tortoise\ColocalizedViewer\T2W_structural_registered_Affine.nii C:\Users\jeff\Documents\Tortoise\ColocalizedViewer\Output\aff_warped_to_histo.nii -R C:\Users\jeff\Documents\Tortoise\ColocalizedViewer\fluorescent_reduce_8_structural_reoriented.nii C:\Users\jeff\Documents\Tortoise\ColocalizedViewer\Output\aff_to_histo.nii C:\Users\jeff\Documents\Tortoise\ColocalizedViewer\Output\aff_to_histoAffine.txt
+
+
+
+
+
+
+/stbb_home/jenkinsjc/dev/
+
+
+
+
+ANTS 3 -m MI\[/stbb_home/jenkinsjc/dev/ColocalizedViewer/TR_Reg/fluorescent_reduce_8_structural22.nii,/stbb_home/jenkinsjc/dev/ColocalizedViewer/TR_Reg/TR_registered_Affine.nii,1,32\] -o /stbb_home/jenkinsjc/dev/ColocalizedViewer/TR_Reg/Output/tr_aff_to_histo.nii -i 30x20x0 -r Gauss\[3,3\] -t Elast\[1\]
+
+
+WarpImageMultiTransform 3 /stbb_home/jenkinsjc/dev/ColocalizedViewer/TR_Reg/TR_registered_Affine.nii /stbb_home/jenkinsjc/dev/ColocalizedViewer/TR_Reg/Output/tr_aff_warped_to_histo.nii -R /stbb_home/jenkinsjc/dev/ColocalizedViewer/TR_Reg/fluorescent_reduce_8_structural22.nii /stbb_home/jenkinsjc/dev/ColocalizedViewer/TR_Reg/Output/tr_aff_to_histoWarp.nii /stbb_home/jenkinsjc/dev/ColocalizedViewer/TR_Reg/Output/tr_aff_to_histoAffine.txt
+
+

@@ -1,99 +1,71 @@
 import sys
-
-#from PyQt4.QtCore import *
-#from PyQt4.QtGui import *
-
 from PySide.QtCore import *
 from PySide.QtGui import *
-
 import matplotlib
-
 matplotlib.use('Qt4Agg')
 matplotlib.rcParams['backend.qt4']='PySide'
-
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-
 import nibabel
 import os
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-
 import sys
-
-#import logging
-#import re
-#import pyinotify
-
-
-using_windows=True
+import subprocess
+using_windows=False
 runtime_location=""
+
+#   Checking if we are on windows
 if(using_windows):
     runtime_location=os.path.dirname(os.path.abspath(__file__))+'\\'
 else:
     runtime_location=os.path.dirname(os.path.abspath(__file__))+'/'
-    
-import subprocess
 
-  
-    
-    
+#       This class will hold the image object and be able to perform queries on it
 class JImage(object):
     widget=None
+    #   initialize the object
     def __init__(self,widg):
-        print("New jimage funkyness")
         self.widget = widg
-        
+    #   prepare the 2d image
     def prepare_2d_data(self, fn):
         data = mpimg.imread(runtime_location+fn)
         plt.figure()
-        plt.imshow(data)
-    
-    
+        plt.imshow(data)    
+        
+    #   perform queries in the image
     def query_image(self, image, query):
         #This command could have multiple commands separated by a new line \n
-        #some_command = "export PATH=$PATH://server.sample.mo/app/bin \n customupload abc.txt"
-        
+        #some_command = "export PATH=$PATH://server.sample.mo/app/bin \n customupload abc.txt"        
         qstring=""
         for i in range(len(query)):
             qstring = qstring + " " + query[i]
  
         print("WHAT IS IMAGE -> " + str(image))
-        print("WHAT IS QUERY -> " + str(qstring))
- 
-        
+        print("WHAT IS QUERY -> " + str(qstring))        
         some_command = runtime_location+"ImageHelper2 " + image + " " + qstring       
-
         p = subprocess.Popen(some_command, stdout=subprocess.PIPE, shell=True)
-
         (output, err) = p.communicate()  
-
         #This makes the wait possible
         p_status = p.wait()
-
         #This will give you the output of the command being executed
-        print "Command output: " + output  
-        
-        result = '\\'.join(image.split('\\')[:-1]) + "\\crop_result.jpg"
-    
-        print(result)
-        
+        print "Command output: " + output          
+        result = '\\'.join(image.split('\\')[:-1]) + "\\crop_result.jpg"    
+        print(result)        
         from pathlib import Path
-
         my_file = Path(result)
+        #   check if the file exists, if so then create the obj
         if my_file.is_file():
             # file exists
-            print("FILE EXISTSSSS")
-            self.widget
+            print("The file exists.")
 
-
+#   Prepare the volume using nibabel
 def prepare_volume_data(fn):
     data = nibabel.load(os.path.join('', fn))
     sa = data.get_data()
     return sa.T
-    
 
-
+#   This is the 'QWidget' subclassed into our demo window
 class KeyboardInputDemoWindow( QWidget ) :
     def __init__( self, parent = None ) :
         QWidget.__init__( self, parent )
@@ -104,7 +76,7 @@ class KeyboardInputDemoWindow( QWidget ) :
         #  execution system whenever keys of the keyboard are pressed.
         #  They receive a QKeyEvent object as a parameter.
 
-        mri  = runtime_location+'Output\StructuralToHistology.nii'
+        mri  = runtime_location+'Output/StructuralToHistology.nii'
         hist = runtime_location+'fluorescent_reduce_8_structural_reoriented.nii'
 
         mri_data = prepare_volume_data(mri)
@@ -118,9 +90,7 @@ class KeyboardInputDemoWindow( QWidget ) :
         ax1.index = mri_data.shape[0] // 2
         ax1.imshow(mri_data[ax1.index])
 
-        self.canvas1 = FigureCanvas(fig1)    
-        
-#        canvas1.mpl_connect('key_press_event', self.process_key1)
+        self.canvas1 = FigureCanvas(fig1)            
         self.canvas1.mpl_connect('button_press_event', self.process_click1)
         self.canvas1.mpl_connect('scroll_event', self.zoom_event)
 
@@ -133,8 +103,6 @@ class KeyboardInputDemoWindow( QWidget ) :
         ax2.imshow(hist_data[ax2.index])
 
         self.canvas2 = FigureCanvas(fig2)    
-
-#        canvas2.mpl_connect('key_press_event', self.process_key2)
         self.canvas2.mpl_connect('button_press_event', self.process_click2)
         self.canvas2.mpl_connect('scroll_event', self.zoom_event)
 
@@ -157,28 +125,23 @@ class KeyboardInputDemoWindow( QWidget ) :
         self.slice_number.textChanged.connect(self.slice_text_change)
         
         volume_control_hb.addWidget(self.slice_slider)
-        volume_control_hb.addWidget(self.slice_number)
+        volume_control_hb.addWidget(self.slice_number)        
         
-        
-        self.main_vb = QVBoxLayout()
-        
+        self.main_vb = QVBoxLayout()        
         
         self.main_vb.addLayout(linked_volumes_hb)
-        self.main_vb.addLayout(volume_control_hb)
-        
+        self.main_vb.addLayout(volume_control_hb)        
    
-        self.setLayout(self.main_vb)
+        self.setLayout(self.main_vb)    
         
-        
-    
-        
+    #   Update the slice (images) based on the textbox change
     def slice_text_change(self):
         cursor = self.slice_number.textCursor()
         cursor.movePosition(QTextCursor.End, QTextCursor.MoveAnchor)
-
         self.slice_number.setTextCursor(cursor)
         self.slice_slider.setValue(int(self.slice_number.toPlainText()))
     
+    #   Event is captured when the slider widget is moved
     def slice_slide_event(self):
         size = self.slice_slider.value()
         print("The slice -> " + str(size))
@@ -189,25 +152,28 @@ class KeyboardInputDemoWindow( QWidget ) :
         self.canvas1.draw()
         self.canvas2.draw()
         
+    #   Previous slice function
     def previous_slice(self,ax):
         """Go to the previous slice."""        
         self.update_slider(ax.index-1)
         self.set_slice(ax, (ax.index-1 % ax.volume.shape[0]))
 
+    #   Next slice function
     def next_slice(self,ax):
         """Go to the next slice."""
         self.update_slider(ax.index+1)
         self.set_slice(ax, (ax.index+1 % ax.volume.shape[0]))
         
+    #   Used for both setting previous and next slices
     def set_slice(self, ax, idx):
         volume = ax.volume
         ax.index = (idx)
         ax.images[0].set_array(volume[ax.index])        
         self.slice_number.setText(str(idx))
         
+    #   Update the slider widget
     def update_slider(self, val):
-        self.slice_slider.setValue(val)
-        
+        self.slice_slider.setValue(val)        
         
     #   Will handle slice zooming for either image
     def zoom_event(self, evt):
@@ -223,10 +189,9 @@ class KeyboardInputDemoWindow( QWidget ) :
         self.canvas1.draw()
         self.canvas2.draw()
 
-    
+    #   Subscribe to mouse click events on the images
     def mousePressEvent(self, QMouseEvent):
         #print mouse position
-        print("WEWT")
         print(str(QMouseEvent))
         print(str(QMouseEvent.pos()))
     
@@ -238,10 +203,6 @@ class KeyboardInputDemoWindow( QWidget ) :
         jmg = JImage(self)
         
         jmg.query_image(runtime_location+'smiley.png' , ['20', '20', '20', '20'])
-        
-        
-
-
    
         res_label = QLabel()
         pmap = QPixmap(runtime_location+'smiley.png')
@@ -254,8 +215,7 @@ class KeyboardInputDemoWindow( QWidget ) :
         self.main_vb.addLayout(result_img)
         self.update()
         
-        #cmd = runtime_location+"BAM_seychelles.jpg 1 2 3 4"        
-        
+        #cmd = runtime_location+"BAM_seychelles.jpg 1 2 3 4"                
         #   Below is some rudimentary (blocking) code to monitor the directory for output files
         """
         logging.basicConfig(level=logging.INFO,
@@ -276,6 +236,7 @@ class KeyboardInputDemoWindow( QWidget ) :
         ax = fig.axes[0]
         print(str(ax)+ "Histology    CLICKED at location ->  " + "(" + str(event.xdata) + ", " + str(event.ydata) + ")")
         
+    #   Run an external executable with command and arguments
     def LaunchExternal(self,cmd,arguments):
         command = cmd
         args = arguments
@@ -286,8 +247,7 @@ class KeyboardInputDemoWindow( QWidget ) :
     def OnExternalFinished(self, e_code, e_status):
         print("DONE DONE DONE.")
         print("Exit code -> " + str(e_code))
-        print("Exit status -> " + str(e_status))            
-  
+        print("Exit status -> " + str(e_status))
   
 """
 pyinotify is not available for windows. this is not a sustainable solution for the time being but is possible
@@ -314,12 +274,14 @@ class EventHandler (pyinotify.ProcessEvent):
                     print g.string
 """
 
+#   This is where the program starts when you run it
 if __name__ == '__main__':
+    #   Create the application
     this_application = QApplication( sys.argv )
     application_window = KeyboardInputDemoWindow()
     application_window.show()
     this_application.exec_()
-    
-
-    
     print("Done?")
+    
+    
+    
