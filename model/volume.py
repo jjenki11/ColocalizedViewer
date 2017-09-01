@@ -161,7 +161,7 @@ def vtk_show(renderer, a, width=400, height=300):
     #return Image(str(buffer(writer.GetResult())))
     #return renderWindow
             
-class Renderer():
+class Renderer(object):
     def __init__(self):
             #super(Renderer, self).__init__()                  
             # Modify the camera with properties defined manually in ParaView            
