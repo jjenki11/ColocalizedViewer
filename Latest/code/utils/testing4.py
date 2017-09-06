@@ -1,19 +1,23 @@
 
 
-try:
-    from PyQt5 import QtCore, QtGui, QtWidgets
-except ImportError:
-    try:
-        from PySide import QtCore, QtGui
-    except ImportError as err:
-        raise ImportError("Cannot load either PyQt or PySide")
+#try:
+#    from PyQt5 import QtCore, QtGui, QtWidgets
+#except ImportError:
+#    try:
+#        from PySide import QtCore, QtGui
+#    except ImportError as err:
+#        raise ImportError("Cannot load either PyQt or PySide")
+        
+import os
+import sys
+from PyQt5 import QtCore, QtGui, QtWidgets
 import vtk
 import itk
 
 # global mapping (only in this file) of widget names to their object
 widget_map = {}
 
-keyPressed = QtCore.pyqtSignal()
+
 
 # Register widget by nam e to our global mapping
 def RegisterWidget(name, widget):
@@ -88,6 +92,24 @@ class Button(QtWidgets.QPushButton):
 
     def Text(self, t):
         self.setText(t)
+        
+class Slider(QtWidgets.QSlider):
+    def __init__(self, _dir, _min, _max, _step, w_name):
+        if(_dir=='h'):
+            super(Slider, self).__init__(QtCore.Qt.Horizontal)
+        if(_dir=='v'):
+            super(Slider, self).__init__(QtCore.Qt.Vertical)
+        #slider = QSlider(Qt.Horizontal)
+        self.setFocusPolicy(QtCore.Qt.StrongFocus)
+        self.setTickPosition(self.TicksBothSides)
+        self.setMinimum(_min)
+        self.setMaximum(_max)
+        self.setTickInterval(10)
+        self.setSingleStep(_step)
+        RegisterWidget(w_name, self)
+        
+    def GetValue(self):
+        return self.value()
 
 # Subclassed combo box widget
 class DropDown(QtWidgets.QComboBox):
@@ -613,13 +635,11 @@ class QVTKRenderWindowInteractor(QtWidgets.QWidget):
 
 
 
-def QVTKRenderWidgetConeExample():
+def QVTKRenderWidgetMain():
     """A simple example that uses the QVTKRenderWindowInteractor class."""
 
     # every QT app needs an app
     app = QtWidgets.QApplication(['QVTKRenderWindowInteractor'])
-
-
 
     # create the widget
     widget = QVTKRenderWindowInteractor()
@@ -637,7 +657,8 @@ def QVTKRenderWidgetConeExample():
 
     # load tiff file
     tiffFile = vtk.vtkTIFFReader()
-    tiffFile.SetFileName('/stbb_home/jenkinsjc/Desktop/LandmarkTesting/76.tif');
+    #tiffFile.SetFileName('/stbb_home/jenkinsjc/Desktop/LandmarkTesting/76.tif');
+    tiffFile.SetFileName(os.getcwd()+'\\Documents\\Tortoise\ColocalizedViewer\\Latest\\code\\utils\\data\\76.tif')
 
     # make a texture out of the tiff file
     tex = vtk.vtkTexture()
@@ -661,7 +682,7 @@ def QVTKRenderWidgetConeExample():
     widget.SetRenderer(ren)
     widget.SetParentActor(actor)
 
-    main_frame = Frame('v', [Label('Landmark Points'), List([],'landmark_list')])
+    main_frame = Frame('v', [Label('Landmark Points'), List([],'landmark_list'), Slider('h', -180, 180, 1, 'x_rot_slider')])
 
     #self.setLayout(v_layout)
     w = QtWidgets.QWidget()
@@ -677,4 +698,4 @@ def QVTKRenderWidgetConeExample():
     app.exec_()
 
 if __name__ == "__main__":
-    QVTKRenderWidgetConeExample()
+    QVTKRenderWidgetMain()
