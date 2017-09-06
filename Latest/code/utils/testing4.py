@@ -682,7 +682,7 @@ def QVTKRenderWidgetMain():
     widget.SetRenderer(ren)
     widget.SetParentActor(actor)
 
-    main_frame = Frame('v', [Label('Landmark Points'), List([],'landmark_list'), Slider('h', -180, 180, 1, 'x_rot_slider')])
+    main_frame = Frame('v', [Label('Landmark Points'), List([],'landmark_list'), Slider('h', -180, 180, 1, 'x_rot_slider'),Slider('h', -180, 180, 1, 'y_rot_slider'),Slider('h', -180, 180, 1, 'z_rot_slider')])
 
     #self.setLayout(v_layout)
     w = QtWidgets.QWidget()
