@@ -1,31 +1,139 @@
+#   Jeff Jenkins
+#   NIH-NIBIB-QMI
+#   9/7/2016 - Date of Latest Revisions
+#   This creates a GUI which is a composition of several packages.
 
-
-#try:
-#    from PyQt5 import QtCore, QtGui, QtWidgets
-#except ImportError:
-#    try:
-#        from PySide import QtCore, QtGui
-#    except ImportError as err:
-#        raise ImportError("Cannot load either PyQt or PySide")
-        
-import os
-import sys
+# include the packages
 from PyQt5 import QtCore, QtGui, QtWidgets
 import vtk
 import itk
+import math
 
 # global mapping (only in this file) of widget names to their object
 widget_map = {}
-
+# GLOBAL props
+textbox_width = 50;
+filebox_width = 150;
 
 
 # Register widget by nam e to our global mapping
 def RegisterWidget(name, widget):
     widget_map[name] = widget
 
-# GLOBAL props
-textbox_width = 50
-filebox_width = 150
+
+# Subclassed itk matrix
+class Matrix(object):
+    def __init__(self):
+        self.m = itk.Matrix.D44()
+        self.m.SetIdentity()
+
+        self.rx = itk.Matrix.D44()
+        self.rx.SetIdentity()
+
+        self.ry = itk.Matrix.D44()
+        self.ry.SetIdentity()
+
+        self.rz = itk.Matrix.D44()
+        self.rz.SetIdentity()
+
+    def Get(self):
+        return self.m.GetVnlMatrix()
+
+    def GetRx(self):
+        return self.rx
+
+    def GetRy(self):
+        return self.ry
+
+    def GetRz(self):
+        return self.rz
+
+    def Print(self):
+        m = self.Get()
+        r1 = str(m.get(0, 0)) + ", " + str(m.get(0, 1)) + ", " + str(m.get(0, 2)) + ", " + str(m.get(0, 3))
+        r2 = str(m.get(1, 0)) + ", " + str(m.get(1, 1)) + ", " + str(m.get(1, 2)) + ", " + str(m.get(1, 3))
+        r3 = str(m.get(2, 0)) + ", " + str(m.get(2, 1)) + ", " + str(m.get(2, 2)) + ", " + str(m.get(2, 3))
+        r4 = str(m.get(3, 0)) + ", " + str(m.get(3, 1)) + ", " + str(m.get(3, 2)) + ", " + str(m.get(3, 3))
+        print(r1)
+        print(r2)
+        print(r3)
+        print(r4)
+        self.Update()
+
+    def Print(self, m):
+        mat=None
+        if(m):
+            mat = self.Get()
+        else:
+            mat = m.GetVnlMatrix()
+
+        r1 = str(mat.get(0, 0)) + ", " + str(mat.get(0, 1)) + ", " + str(mat.get(0, 2)) + ", " + str(mat.get(0, 3))
+        r2 = str(mat.get(1, 0)) + ", " + str(mat.get(1, 1)) + ", " + str(mat.get(1, 2)) + ", " + str(mat.get(1, 3))
+        r3 = str(mat.get(2, 0)) + ", " + str(mat.get(2, 1)) + ", " + str(mat.get(2, 2)) + ", " + str(mat.get(2, 3))
+        r4 = str(mat.get(3, 0)) + ", " + str(mat.get(3, 1)) + ", " + str(mat.get(3, 2)) + ", " + str(mat.get(3, 3))
+        print("")
+        print(r1)
+        print(r2)
+        print(r3)
+        print(r4)
+        print("")
+        self.Update()
+
+
+    def RotateX(self, rot):
+        self.rx.GetVnlMatrix().set(1, 1, math.cos(rot))
+        self.rx.GetVnlMatrix().set(1, 2, -math.sin(rot))
+        self.rx.GetVnlMatrix().set(2, 1, math.sin(rot))
+        self.rx.GetVnlMatrix().set(2, 2, math.cos(rot))
+        self.Update()
+
+    def RotateY(self, rot):
+        self.ry.GetVnlMatrix().set(0, 0, math.cos(rot))
+        self.ry.GetVnlMatrix().set(0, 2, math.sin(rot))
+        self.ry.GetVnlMatrix().set(2, 0, -math.sin(rot))
+        self.ry.GetVnlMatrix().set(2, 2, math.cos(rot))
+        self.Update()
+
+    def RotateZ(self, rot):
+        self.rz.GetVnlMatrix().set(0, 0, math.cos(rot))
+        self.rz.GetVnlMatrix().set(0, 1, -math.sin(rot))
+        self.rz.GetVnlMatrix().set(1, 0, math.sin(rot))
+        self.rz.GetVnlMatrix().set(1, 1, math.cos(rot))
+        self.Update()
+
+    def Update(self):
+        self.m = self.GetRz() * self.GetRy() * self.GetRx()
+
+    # be careful about transposing between itk and vtk matrix type
+    def ToVtkTransform(self):
+        mat = vtk.vtkMatrix4x4()
+        m = self.Get()
+        mat.SetElement(0, 0, m.get(0, 0))
+        mat.SetElement(0, 1, m.get(0, 1))
+        mat.SetElement(0, 2, m.get(0, 2))
+        mat.SetElement(0, 3, m.get(0, 3))
+
+        mat.SetElement(1, 0, m.get(1, 0))
+        mat.SetElement(1, 1, m.get(1, 1))
+        mat.SetElement(1, 2, m.get(1, 2))
+        mat.SetElement(1, 3, m.get(1, 3))
+
+        mat.SetElement(2, 0, m.get(2, 0))
+        mat.SetElement(2, 1, m.get(2, 1))
+        mat.SetElement(2, 2, m.get(2, 2))
+        mat.SetElement(2, 3, m.get(2, 3))
+
+        mat.SetElement(3, 0, m.get(3, 0))
+        mat.SetElement(3, 1, m.get(3, 1))
+        mat.SetElement(3, 2, m.get(3, 2))
+        mat.SetElement(3, 3, m.get(3, 3))
+        vmat = vtk.vtkTransform()
+        vmat.Identity()
+        # trans.Scale(0.3,0.9,0.2)
+        vmat.SetMatrix(mat)
+        vmat.Update()
+        return vmat
+
 
 # Subclassed qframe widget
 class Frame(QtWidgets.QFrame):
@@ -38,6 +146,7 @@ class Frame(QtWidgets.QFrame):
             box = VBox(contents)
         self.setLayout(box)
 
+
 # Subclassed horizontal container widget
 class HBox(QtWidgets.QHBoxLayout):
     def __init__(self, contents):
@@ -48,6 +157,7 @@ class HBox(QtWidgets.QHBoxLayout):
         for item in items:
             self.addWidget(item)
 
+
 # Subclassed vertical container widget
 class VBox(QtWidgets.QVBoxLayout):
     def __init__(self, contents):
@@ -57,6 +167,7 @@ class VBox(QtWidgets.QVBoxLayout):
     def append(self, items):
         for item in items:
             self.addWidget(item)
+
 
 # Subclassed text box widget
 class TextBox(QtWidgets.QLineEdit):
@@ -72,14 +183,21 @@ class TextBox(QtWidgets.QLineEdit):
     def GetText(self):
         return self.text()
 
+
 # Subclassed label widget
 class Label(QtWidgets.QLabel):
-    def __init__(self, t):
+    def __init__(self, t, w_name):
         super(Label, self).__init__(t)
         self.SetText(t)
+        self.name = w_name
+        RegisterWidget(w_name, self)
 
     def SetText(self, lbl):
         self.setText(str(lbl))
+
+    def GetName(self):
+        return self.name
+
 
 # Subclassed button widget
 class Button(QtWidgets.QPushButton):
@@ -92,9 +210,11 @@ class Button(QtWidgets.QPushButton):
 
     def Text(self, t):
         self.setText(t)
-        
+
+
+# Subclassed slider widget with some global operations
 class Slider(QtWidgets.QSlider):
-    def __init__(self, _dir, _min, _max, _step, w_name):
+    def __init__(self, _dir, _min, _max, _step, w_name, l_name):
         if(_dir=='h'):
             super(Slider, self).__init__(QtCore.Qt.Horizontal)
         if(_dir=='v'):
@@ -106,10 +226,44 @@ class Slider(QtWidgets.QSlider):
         self.setMaximum(_max)
         self.setTickInterval(10)
         self.setSingleStep(_step)
+        self.disp_label = widget_map[l_name]
+        self.valueChanged[int].connect(self.changeValue)
+        self.sliderMoved.connect(self.changeValue)
         RegisterWidget(w_name, self)
         
     def GetValue(self):
         return self.value()
+
+    def changeValue(self, value):
+        print(str(self.disp_label.GetName()))
+        if (self.disp_label.GetName() == 'x_slider_label'):
+            self.disp_label.SetText("Theta: " + str(value))
+            widget_map['model_matrix'].RotateX(math.radians(value))
+            widget_map['model_matrix'].Update()
+            widget_map['model_matrix'].Print(widget_map['model_matrix'].Get())
+
+        if (self.disp_label.GetName() == 'y_slider_label'):
+            self.disp_label.SetText("Phi: " + str(value))
+            widget_map['model_matrix'].RotateY(math.radians(value))
+            widget_map['model_matrix'].Update()
+            widget_map['model_matrix'].Print(widget_map['model_matrix'].Get())
+
+        if (self.disp_label.GetName() == 'z_slider_label'):
+            self.disp_label.SetText("Rho: " + str(value))
+            widget_map['model_matrix'].RotateZ(math.radians(value))
+            widget_map['model_matrix'].Update()
+            widget_map['model_matrix'].Print(widget_map['model_matrix'].Get())
+
+        transformation = widget_map['model_matrix'].ToVtkTransform()
+        widget_map['plane_actor'].SetUserTransform(transformation)
+
+        widget_map['landmark_list'].Reset()
+        for la in widget_map['landmark_actors']:
+            la.SetUserTransform(transformation)
+            widget_map['landmark_list'].Insert(str(la.GetCenter()))
+
+        widget_map['vtk_widget'].Render()
+
 
 # Subclassed combo box widget
 class DropDown(QtWidgets.QComboBox):
@@ -121,6 +275,7 @@ class DropDown(QtWidgets.QComboBox):
 
     def GetText(self):
         return unicode(self.currentText())
+
 
 # Subclassed list widget
 class List(QtWidgets.QListWidget):
@@ -145,6 +300,13 @@ class List(QtWidgets.QListWidget):
     def Remove(self):
         rnum = self.currentRow()
         item = self.takeItem(rnum)
+        self.items.pop(rnum)
+        del item
+        return rnum
+
+    def RemoveIndex(self, rnum):
+        item = self.takeItem(rnum)
+        self.items.pop(rnum)
         del item
         return rnum
 
@@ -154,6 +316,15 @@ class List(QtWidgets.QListWidget):
             ret_items.append(self.item(index))
         return ret_items
 
+    def GetItemAtIndex(self):
+        return self.item(self.currentRow())
+
+    def SetItems(self, items):
+        self.Reset()
+        for it in items:
+            self.addItem(str(it))
+            self.items.append(str(it))
+
     def keyPressEvent(self, ev):
         if ev.key() < 256:
             key = str(ev.text())
@@ -162,8 +333,24 @@ class List(QtWidgets.QListWidget):
 
         if(ev.key() == QtCore.Qt.Key_Delete):
             print("PRESSED DELETE (list event)!!!")
-            self.Remove()
+            #print("THE ITEM -> " + str(self.GetItemAtIndex().text()))
+            #_pos = str(self.GetItemAtIndex().text())
+            #parr = []
+            #_posstr = _pos.replace('[', '').replace(']', '')
+            #parr = _posstr.split(',')
+            #fparr = []
+            #for p in parr:
+            #    fparr.append(float(p))
+            #print("POS -> " + str(_pos))
+            #act = GetPickedActor(fparr, widget_map['vtk_widget'].ren)
+            #print("What is act?  "+str(act))
+            #if (act ):
+            #    widget_map['vtk_widget'].ren.RemoveActor(act)
+            #    widget_map['vtk_widget'].Marks.RemoveLandmark(act)
+            #self.Remove()
 
+
+# create a landmark and add it to the renderer
 def MakeLandmark(pos):
     source = vtk.vtkSphereSource()
     source.SetCenter(pos[0],pos[1],pos[2])
@@ -173,14 +360,19 @@ def MakeLandmark(pos):
     _mapper.SetInputConnection(source.GetOutputPort())
     act = vtk.vtkActor()
     act.SetMapper(_mapper)
+    widget_map['landmark_actors'].append(act)
     return act
 
+
+# get the location where the mouse clicked
 def GetPickedLocation(_ePos, _ren):
     clickPos = [i for i in _ePos]
     picker = vtk.vtkPropPicker();
     picker.Pick(clickPos[0], clickPos[1], 0, _ren)
     return [i for i in picker.GetPickPosition()]
 
+
+# get the actor under the mouse
 def GetPickedActor(_ePos, _ren):
     clickPos = [i for i in _ePos]
     picker = vtk.vtkPropPicker();
@@ -188,6 +380,7 @@ def GetPickedActor(_ePos, _ren):
     return picker.GetActor()
 
 
+# class that is a point object (tbd refactor to combine point and landmark)
 class Point(object):
     def __init__(self,pt):
         pixeltype = itk.D
@@ -199,6 +392,7 @@ class Point(object):
         return self
 
 
+# class that is a pointset object (tbd refactor to combine pointset and landmarkset)
 class PointSet(object):
     def __init__(self):
         self.length = 0;
@@ -227,6 +421,7 @@ class PointSet(object):
             print "Point is = " + str(pp.GetElement(0)) + ", " + str(pp.GetElement(1)) + ", " + str(pp.GetElement(2))
 
 
+# class that represents a landmark and some basic operations on the landmark
 class Landmark(object):
 
     def __init__(self):
@@ -234,6 +429,8 @@ class Landmark(object):
         self.y=0
         self.z=0
 
+
+# class that holds a set of landmarks with some basic operations on the set
 class LandmarkSet(object):
 
     def __init__(self):
@@ -245,14 +442,24 @@ class LandmarkSet(object):
         self.points.append(_pos)
         print("Added point to set.")
         print("we now have => "+str(len(self.points)))
+        #widget_map['landmark_list'].Insert(str(_pos))
 
     def RemoveLandmark(self, _mark):
-        idx = self.actors.index(_mark)
-        self.actors.remove(_mark)
-        self.points.pop(idx)
-        print("Removed point from set.")
-        print("we now have => " + str(len(self.points)) + " points")
-        print("we now have => " + str(len(self.actors)) + " actors")
+        if (_mark in self.actors) and isinstance(self.actors.index(_mark), int):
+            idx = self.actors.index(_mark)
+            self.actors.remove(_mark)
+            self.points.pop(idx)
+            print("Removed point from set.")
+            print("we now have => " + str(len(self.points)) + " points")
+            print("we now have => " + str(len(self.actors)) + " actors")
+            widget_map['landmark_list'].SetItems((self.points))
+            return idx
+
+    def RemoveCurrentLandmark(self):
+        #idx = self.actors.index(_mark)
+        _mark = widget_map['landmark_list'].GetItemAtIndex()
+        print("REMOVING CURRENT SELECTION -> " + str(_mark))
+        return self.RemoveLandmark(_mark)
 
     def ExtractPoints(self):
         pts=[]
@@ -276,6 +483,19 @@ class LandmarkSet(object):
         print("Our actors and points -> " + str(self.actors) + ",         " + str(self.points))
 
 
+# controller for different global button actions
+class ButtonController(object):
+
+    def __init__(self):
+        print("Created button controller")
+
+    def ResetRotation(self):
+        widget_map['x_rot_slider'].setValue(0)
+        widget_map['y_rot_slider'].setValue(0)
+        widget_map['z_rot_slider'].setValue(0)
+
+
+# subclassed qwidget which is actually a composite qt and vtk widget
 class QVTKRenderWindowInteractor(QtWidgets.QWidget):
 
     """ A QVTKRenderWindowInteractor for Python and Qt.  Uses a
@@ -373,7 +593,7 @@ class QVTKRenderWindowInteractor(QtWidgets.QWidget):
         self.__wheelDelta = 0
 
         self.ren = None
-        self.Marks = LandmarkSet()
+        widget_map['landmark_points'] = LandmarkSet()
 
         self.Points = PointSet()
         self.Points.AddPoint(([0.0, 0.0, 0.0]))
@@ -395,7 +615,7 @@ class QVTKRenderWindowInteractor(QtWidgets.QWidget):
             rw = kw['rw']
 
         # create qt-level widget
-        QtWidgets.QWidget.__init__(self, parent, wflags|QtCore.Qt.MSWindowsOwnDC)
+        super(QVTKRenderWindowInteractor, self).__init__(parent, wflags|QtCore.Qt.MSWindowsOwnDC)
 
         if rw: # user-supplied render window
             self._RenderWindow = rw
@@ -543,7 +763,7 @@ class QVTKRenderWindowInteractor(QtWidgets.QWidget):
                 l = GetPickedLocation(self.GetEventPosition(), self.ren);
                 a = MakeLandmark(l)
                 self.ren.AddActor(a)
-                self.Marks.AddLandmark(a, l)
+                widget_map['landmark_points'].AddLandmark(a, l)
                 widget_map['landmark_list'].Insert(str(l))
                 self.Points.PrintPoints()
 
@@ -553,9 +773,10 @@ class QVTKRenderWindowInteractor(QtWidgets.QWidget):
         elif self._ActiveButton == QtCore.Qt.RightButton:
             self._Iren.RightButtonPressEvent()
             act = GetPickedActor(self.GetEventPosition(), self.ren)
-            if not (act == self.parentActor):
+            if (act and act != self.parentActor):
+                widget_map['landmark_actors'].remove(act)
                 self.ren.RemoveActor(act)
-                self.Marks.RemoveLandmark(act)
+                idx = widget_map['landmark_points'].RemoveLandmark(act)
                 print(str(widget_map['landmark_list'].GetItems()))
                 print("Removed actor.")
             else:
@@ -596,6 +817,12 @@ class QVTKRenderWindowInteractor(QtWidgets.QWidget):
 
         if(ev.key() == QtCore.Qt.Key_Delete):
             print("PRESSED DELETE (vtk event)!!!")
+            #_pos = self.Marks.RemoveCurrentLandmark()
+            #print("POS -> " + str(_pos))
+            #act = GetPickedActor(_pos, self.ren)
+            #if (act and act != self.parentActor):
+            #    self.ren.RemoveActor(act)
+
 
         self._Iren.SetEventInformationFlipY(self.__saveX, self.__saveY,
                                             ctrl, shift, key, 0, None)
@@ -625,7 +852,6 @@ class QVTKRenderWindowInteractor(QtWidgets.QWidget):
         elif self.__wheelDelta <= -120:
             self._Iren.MouseWheelBackwardEvent()
 
-
     def GetRenderWindow(self):
         return self._RenderWindow
 
@@ -633,32 +859,37 @@ class QVTKRenderWindowInteractor(QtWidgets.QWidget):
         self.update()
 
 
-
-
+# Setup the qpplication elements
 def QVTKRenderWidgetMain():
     """A simple example that uses the QVTKRenderWindowInteractor class."""
+
+    widget_map['model_matrix'] = Matrix()
+
+    widget_map['landmark_actors'] = []
+
+    widget_map['button_controller'] = ButtonController()
 
     # every QT app needs an app
     app = QtWidgets.QApplication(['QVTKRenderWindowInteractor'])
 
     # create the widget
-    widget = QVTKRenderWindowInteractor()
-    widget.Initialize()
-    widget.Start()
+    widget_map['vtk_widget'] = QVTKRenderWindowInteractor()
+    widget_map['vtk_widget'].Initialize()
+    widget_map['vtk_widget'].Start()
     # if you dont want the 'q' key to exit comment this.
-    widget.AddObserver("ExitEvent", lambda o, e, a=app: a.quit())
+    widget_map['vtk_widget'].AddObserver("ExitEvent", lambda o, e, a=app: a.quit())
 
     ren = vtk.vtkRenderer()
-    widget.GetRenderWindow().AddRenderer(ren)
+    widget_map['vtk_widget'].GetRenderWindow().AddRenderer(ren)
 
     # create plane as base obj
-    planeSrc = vtk.vtkPlaneSource()
-    planeSrc.Update()
+    widget_map['plane_widget'] = vtk.vtkPlaneSource()
+    widget_map['plane_widget'].Update()
 
     # load tiff file
     tiffFile = vtk.vtkTIFFReader()
-    #tiffFile.SetFileName('/stbb_home/jenkinsjc/Desktop/LandmarkTesting/76.tif');
-    tiffFile.SetFileName(os.getcwd()+'\\Documents\\Tortoise\ColocalizedViewer\\Latest\\code\\utils\\data\\76.tif')
+    tiffFile.SetFileName('/stbb_home/jenkinsjc/Desktop/LandmarkTesting/76.tif');
+    #tiffFile.SetFileName(os.getcwd()+'\\Documents\\Tortoise\ColocalizedViewer\\Latest\\code\\utils\\data\\76.tif')
 
     # make a texture out of the tiff file
     tex = vtk.vtkTexture()
@@ -666,36 +897,43 @@ def QVTKRenderWidgetMain():
 
     # make a texture mapper for the plane
     map_to_plane = vtk.vtkTextureMapToPlane()
-    map_to_plane.SetInputConnection(planeSrc.GetOutputPort())
+    map_to_plane.SetInputConnection(widget_map['plane_widget'].GetOutputPort())
 
     # mapper
     mapper = vtk.vtkPolyDataMapper()
     mapper.SetInputConnection(map_to_plane.GetOutputPort())
 
     # actor
-    actor = vtk.vtkActor()
-    actor.SetMapper(mapper)
-    actor.SetTexture(tex)
+    widget_map['plane_actor'] = vtk.vtkActor()
+    widget_map['plane_actor'].SetMapper(mapper)
+    widget_map['plane_actor'].SetTexture(tex)
 
-    ren.AddActor(actor)
+    ren.AddActor(widget_map['plane_actor'])
 
-    widget.SetRenderer(ren)
-    widget.SetParentActor(actor)
+    widget_map['vtk_widget'].SetRenderer(ren)
+    widget_map['vtk_widget'].SetParentActor(widget_map['plane_actor'])
 
-    main_frame = Frame('v', [Label('Landmark Points'), List([],'landmark_list'), Slider('h', -180, 180, 1, 'x_rot_slider'),Slider('h', -180, 180, 1, 'y_rot_slider'),Slider('h', -180, 180, 1, 'z_rot_slider')])
+    main_frame = Frame('v', [
+            Label('Landmark Points', 'lps'),
+            List([],'landmark_list'),
+            Button('Reset rotation', widget_map['button_controller'].ResetRotation, 'reset_rotation_button'),
+            Label('Theta: 0', 'x_slider_label'),Slider('h', -180, 180, 1, 'x_rot_slider','x_slider_label'),
+            Label('Phi:   0', 'y_slider_label'),Slider('h', -180, 180, 1, 'y_rot_slider','y_slider_label'),
+            Label('Rho:   0', 'z_slider_label'),Slider('h', -180, 180, 1, 'z_rot_slider','z_slider_label')
+    ])
 
-    #self.setLayout(v_layout)
     w = QtWidgets.QWidget()
 
-
-
-    w.setLayout(HBox([main_frame,widget]))
+    w.setLayout(HBox([
+            main_frame,
+            widget_map['vtk_widget']
+    ]))
     w.show()
-
-   # main_frame.show()
 
     # start event processing
     app.exec_()
 
+
+# The main entry point
 if __name__ == "__main__":
     QVTKRenderWidgetMain()
