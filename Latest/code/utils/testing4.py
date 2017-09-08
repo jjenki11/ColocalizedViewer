@@ -8,6 +8,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 import vtk
 import itk
 import math
+import os
 
 # global mapping (only in this file) of widget names to their object
 widget_map = {}
@@ -888,8 +889,8 @@ def QVTKRenderWidgetMain():
 
     # load tiff file
     tiffFile = vtk.vtkTIFFReader()
-    tiffFile.SetFileName('/stbb_home/jenkinsjc/Desktop/LandmarkTesting/76.tif');
-    #tiffFile.SetFileName(os.getcwd()+'\\Documents\\Tortoise\ColocalizedViewer\\Latest\\code\\utils\\data\\76.tif')
+    #tiffFile.SetFileName('/stbb_home/jenkinsjc/Desktop/LandmarkTesting/76.tif');
+    tiffFile.SetFileName(os.getcwd()+'\\Documents\\Tortoise\ColocalizedViewer\\Latest\\code\\utils\\data\\76.tif')
 
     # make a texture out of the tiff file
     tex = vtk.vtkTexture()
