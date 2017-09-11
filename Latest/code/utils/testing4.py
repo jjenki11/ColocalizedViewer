@@ -17,8 +17,8 @@ widget_map = {}
 # GLOBAL props
 textbox_width = 50;
 filebox_width = 150;
-default_min_lut = 0;
-default_max_lut = 500;
+default_min_lut = 0.0;
+default_max_lut = 500.0;
 
 home_pc = True;
 
@@ -301,7 +301,7 @@ class Slider(QtWidgets.QSlider):
         #   apply color map
         xferFunc = vtk.vtkPiecewiseFunction()
         xferFunc.AddPoint(widget_map['min_lut_value'], 0.0)
-        xferFunc.AddPoint(widget_map['max_lut_value'], 360.0)
+        xferFunc.AddPoint(widget_map['max_lut_value'], 255.0)
         widget_map['mri_volume_property'].SetColor(xferFunc)
 
         #   apply transformation
@@ -550,8 +550,8 @@ class ButtonController(object):
 
 
         xferFunc = vtk.vtkPiecewiseFunction()
-        xferFunc.AddPoint(0, default_min_lut)
-        xferFunc.AddPoint(550, default_max_lut)
+        xferFunc.AddPoint(default_min_lut, 0.0)
+        xferFunc.AddPoint(default_max_lut, 255.0)
         widget_map['mri_volume_property'].SetColor(xferFunc)
 
 
@@ -999,23 +999,23 @@ def MriVolumeRenderTest():
     dataImporter.SetNumberOfScalarComponents(1)
     dataImporter.CopyImportVoidPointer(data_string, len(data_string))
     # For some reason we need to invert the img_data_shape indexing (figure out what the strategy is in general)
-    dataImporter.SetDataExtent(0, img_data_shape[0] - 1, 0, img_data_shape[1] - 1, 0, img_data_shape[2] - 1)
-    dataImporter.SetWholeExtent(0, img_data_shape[0] - 1, 0, img_data_shape[1] - 1, 0, img_data_shape[2] - 1)
+    dataImporter.SetDataExtent(0, img_data_shape[2] - 1, 0, img_data_shape[1] - 1, 0, img_data_shape[0] - 1)
+    dataImporter.SetWholeExtent(0, img_data_shape[2] - 1, 0, img_data_shape[1] - 1, 0, img_data_shape[0] - 1)
     dataImporter.Update()
-    temp_data = dataImporter.GetOutput()
-    new_data = vtk.vtkImageData()
-    new_data.DeepCopy(temp_data)
 
+
+    min_val = nifti.GetMin()
+    max_val = nifti.GetMax()
 
 
     # The following class is used to store transparencyv-values for later retrival. In our case, we want the value 0 to be
     # completly opaque whereas the three different cubes are given different transperancy-values to show how it works.
     alphaChannelFunc = vtk.vtkPiecewiseFunction()
     alphaChannelFunc.AddPoint(0, 0.0)
-    alphaChannelFunc.AddPoint(1, 0.05)
-    alphaChannelFunc.AddPoint(50, 0.1)
-    alphaChannelFunc.AddPoint(100, 0.3)
-    alphaChannelFunc.AddPoint(150, 0.5)
+    alphaChannelFunc.AddPoint(min_val+1, 0.05)
+    alphaChannelFunc.AddPoint(max_val/16, 0.1)
+    alphaChannelFunc.AddPoint(max_val/8, 0.3)
+    alphaChannelFunc.AddPoint(max_val/4, 0.5)
 
     # This class stores color data and can create color tables from a few color points. For this demo, we want the three cubes
     # to be of the colors red green and blue.
@@ -1025,8 +1025,6 @@ def MriVolumeRenderTest():
     #colorFunc.AddRGBPoint(150, 0.0, 0.0, 1.0)
 
 
-    min_val = nifti.GetMin()
-    max_val = nifti.GetMax()
 
     print("Min -> " + str(min_val))
     print("Max -> " + str(max_val))
@@ -1035,8 +1033,8 @@ def MriVolumeRenderTest():
     widget_map['max_lut_value'] = max_val
 
     xferFunc = vtk.vtkPiecewiseFunction()
-    xferFunc.AddPoint(min_val, 0.0)
-    xferFunc.AddPoint(max_val, 10000)
+    xferFunc.AddPoint(widget_map['min_lut_value'], 0.0)
+    xferFunc.AddPoint(widget_map['max_lut_value'], 1000)
     # The preavius two classes stored properties. Because we want to apply these properties to the volume we want to render,
     # we have to store them in a class that stores volume prpoperties.
 
