@@ -1,4 +1,4 @@
- #An example from scipy cookbook demonstrating the use of numpy arrys in vtk
+ #An example from scipy cookbook demonstrating the use of numpy arrys in vtk and nibabel
 
 import vtk
 from numpy import *

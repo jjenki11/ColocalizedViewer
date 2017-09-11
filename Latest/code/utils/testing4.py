@@ -9,6 +9,7 @@ import vtk
 import itk
 import math
 import os
+from numpy import *
 
 # global mapping (only in this file) of widget names to their object
 widget_map = {}
@@ -27,6 +28,15 @@ class Matrix(object):
     def __init__(self):
         self.m = itk.Matrix.D44()
         self.m.SetIdentity()
+        
+        self.tx = itk.Matrix.D44()
+        self.tx.SetIdentity()
+        
+        self.ty = itk.Matrix.D44()
+        self.ty.SetIdentity()
+        
+        self.tz = itk.Matrix.D44()
+        self.tz.SetIdentity()
 
         self.rx = itk.Matrix.D44()
         self.rx.SetIdentity()
@@ -39,7 +49,16 @@ class Matrix(object):
 
     def Get(self):
         return self.m.GetVnlMatrix()
-
+        
+    def GetTx(self):
+        return self.tx
+        
+    def GetTy(self):
+        return self.ty
+        
+    def GetTz(self):
+        return self.tz
+        
     def GetRx(self):
         return self.rx
 
@@ -103,7 +122,7 @@ class Matrix(object):
         self.Update()
 
     def Update(self):
-        self.m = self.GetRz() * self.GetRy() * self.GetRx()
+        self.m = (self.GetTz() * self.GetTy() * self.GetTx()) * (self.GetRz() * self.GetRy() * self.GetRx())
 
     # be careful about transposing between itk and vtk matrix type
     def ToVtkTransform(self):
@@ -130,10 +149,17 @@ class Matrix(object):
         mat.SetElement(3, 3, m.get(3, 3))
         vmat = vtk.vtkTransform()
         vmat.Identity()
-        # trans.Scale(0.3,0.9,0.2)
         vmat.SetMatrix(mat)
         vmat.Update()
         return vmat
+        
+        
+        
+# Subclassed vtk volume rendering stuff
+class VolumeRenderer(object):
+    def __init__(self):
+        pass
+
 
 
 # Subclassed qframe widget
@@ -634,6 +660,8 @@ class QVTKRenderWindowInteractor(QtWidgets.QWidget):
         else:
             self._Iren = vtk.vtkGenericRenderWindowInteractor()
             self._Iren.SetRenderWindow(self._RenderWindow)
+            
+        
 
         # do all the necessary qt setup
         self.setAttribute(QtCore.Qt.WA_OpaquePaintEvent)
@@ -753,11 +781,10 @@ class QVTKRenderWindowInteractor(QtWidgets.QWidget):
             repeat = 1
         self._Iren.SetEventInformationFlipY(ev.x(), ev.y(),
                                             ctrl, shift, chr(0), repeat, None)
-
         self._ActiveButton = ev.button()
 
         if self._ActiveButton == QtCore.Qt.LeftButton:
-            self._Iren.LeftButtonPressEvent()
+            
             act = GetPickedActor(self.GetEventPosition(), self.ren)
             if(act and act == self.parentActor):
 
@@ -766,13 +793,15 @@ class QVTKRenderWindowInteractor(QtWidgets.QWidget):
                 self.ren.AddActor(a)
                 widget_map['landmark_points'].AddLandmark(a, l)
                 widget_map['landmark_list'].Insert(str(l))
-                self.Points.PrintPoints()
+                #self.Points.PrintPoints()  - correct but somehow decoupled from the landmark list
+                self.Render()
 
             else:
                 print("THere is no actor at your click location")
+                self._Iren.LeftButtonPressEvent()
 
         elif self._ActiveButton == QtCore.Qt.RightButton:
-            self._Iren.RightButtonPressEvent()
+            #
             act = GetPickedActor(self.GetEventPosition(), self.ren)
             if (act and act != self.parentActor):
                 widget_map['landmark_actors'].remove(act)
@@ -780,11 +809,15 @@ class QVTKRenderWindowInteractor(QtWidgets.QWidget):
                 idx = widget_map['landmark_points'].RemoveLandmark(act)
                 print(str(widget_map['landmark_list'].GetItems()))
                 print("Removed actor.")
+                self.Render()
             else:
                 print("Cannot remove parent actor")
+                self._Iren.RightButtonPressEvent()
 
         elif self._ActiveButton == QtCore.Qt.MidButton:
             self._Iren.MiddleButtonPressEvent()
+            print("TBD placeholder for mmc functionality")
+            
 
     def mouseReleaseEvent(self, ev):
         ctrl, shift = self._GetCtrlShift(ev)
@@ -858,6 +891,73 @@ class QVTKRenderWindowInteractor(QtWidgets.QWidget):
 
     def Render(self):
         self.update()
+        
+        
+        
+        
+def VolumeRenderTest():
+        # We begin by creating the data we want to render.
+    # For this tutorial, we create a 3D-image containing three overlaping cubes.
+    # This data can of course easily be replaced by data from a medical CT-scan or anything else three dimensional.
+    # The only limit is that the data must be reduced to unsigned 8 bit or 16 bit integers.
+    data_matrix = zeros([75, 75, 75], dtype=uint16)
+    data_matrix[0:35, 0:35, 0:35] = 50
+    data_matrix[25:55, 25:55, 25:55] = 100
+    data_matrix[45:74, 45:74, 45:74] = 150
+
+    # For VTK to be able to use the data, it must be stored as a VTK-image. This can be done by the vtkImageImport-class which
+    # imports raw data and stores it.
+    dataImporter = vtk.vtkImageImport()
+    # The preaviusly created array is converted to a string of chars and imported.
+    data_string = data_matrix.tostring()
+    dataImporter.CopyImportVoidPointer(data_string, len(data_string))
+    # The type of the newly imported data is set to unsigned char (uint8)
+    dataImporter.SetDataScalarTypeToUnsignedChar()
+    # Because the data that is imported only contains an intensity value (it isnt RGB-coded or someting similar), the importer
+    # must be told this is the case.
+    dataImporter.SetNumberOfScalarComponents(1)
+    # The following two functions describe how the data is stored and the dimensions of the array it is stored in. For this
+    # simple case, all axes are of length 75 and begins with the first element. For other data, this is probably not the case.
+    # I have to admit however, that I honestly dont know the difference between SetDataExtent() and SetWholeExtent() although
+    # VTK complains if not both are used.
+    dataImporter.SetDataExtent(0, 74, 0, 74, 0, 74)
+    dataImporter.SetWholeExtent(0, 74, 0, 74, 0, 74)
+
+    # The following class is used to store transparencyv-values for later retrival. In our case, we want the value 0 to be
+    # completly opaque whereas the three different cubes are given different transperancy-values to show how it works.
+    alphaChannelFunc = vtk.vtkPiecewiseFunction()
+    alphaChannelFunc.AddPoint(0, 0.0)
+    alphaChannelFunc.AddPoint(1, 0.05)
+    alphaChannelFunc.AddPoint(50, 0.1)
+    alphaChannelFunc.AddPoint(100, 0.3)
+    alphaChannelFunc.AddPoint(150, 0.5)
+
+    # This class stores color data and can create color tables from a few color points. For this demo, we want the three cubes
+    # to be of the colors red green and blue.
+    colorFunc = vtk.vtkColorTransferFunction()
+    colorFunc.AddRGBPoint(50, 1.0, 1.0, 0.0)
+    colorFunc.AddRGBPoint(100, 0.0, 1.0, 0.0)
+    colorFunc.AddRGBPoint(150, 0.0, 0.0, 1.0)
+
+    # The preavius two classes stored properties. Because we want to apply these properties to the volume we want to render,
+    # we have to store them in a class that stores volume prpoperties.
+    volumeProperty = vtk.vtkVolumeProperty()
+    volumeProperty.SetColor(colorFunc)
+    volumeProperty.SetScalarOpacity(alphaChannelFunc)
+
+    # This class describes how the volume is rendered (through ray tracing).
+    compositeFunction = vtk.vtkVolumeRayCastCompositeFunction()
+    # We can finally create our volume. We also have to specify the data for it, as well as how the data will be rendered.
+    volumeMapper = vtk.vtkVolumeRayCastMapper()
+    volumeMapper.SetVolumeRayCastFunction(compositeFunction)
+    volumeMapper.SetInputConnection(dataImporter.GetOutputPort())
+
+    # The class vtkVolume is used to pair the preaviusly declared volume as well as the properties to be used when rendering that volume.
+    volume = vtk.vtkVolume()
+    volume.SetMapper(volumeMapper)
+    volume.SetProperty(volumeProperty)
+    
+    return volume
 
 
 # Setup the qpplication elements
@@ -890,7 +990,9 @@ def QVTKRenderWidgetMain():
     # load tiff file
     tiffFile = vtk.vtkTIFFReader()
     #tiffFile.SetFileName('/stbb_home/jenkinsjc/Desktop/LandmarkTesting/76.tif');
-    tiffFile.SetFileName(os.getcwd()+'\\Documents\\Tortoise\ColocalizedViewer\\Latest\\code\\utils\\data\\76.tif')
+
+    #   much nicer now that we are doing it with anaconda... doesnt require us to put a path relative to python 
+    tiffFile.SetFileName(os.getcwd()+'\\data\\76.tif')
 
     # make a texture out of the tiff file
     tex = vtk.vtkTexture()
@@ -908,6 +1010,15 @@ def QVTKRenderWidgetMain():
     widget_map['plane_actor'] = vtk.vtkActor()
     widget_map['plane_actor'].SetMapper(mapper)
     widget_map['plane_actor'].SetTexture(tex)
+    
+    
+    test_vol = VolumeRenderTest();
+    ren.AddVolume(test_vol)
+
+    
+    
+    
+    
 
     ren.AddActor(widget_map['plane_actor'])
 
