@@ -962,7 +962,7 @@ def MriVolumeRenderTest():
 
     nifti = NiftiFile()
     nifti.ReadFile('/stbb_home/jenkinsjc/dev/ColocalizedViewer/Latest/data/structural_test.nii')
-    nifti.SetType(np.uint8)
+    nifti.SetType(np.uint16)
     img_data = nifti.GetData()
 
     #img_data = nifti.GetData()
@@ -974,8 +974,8 @@ def MriVolumeRenderTest():
     dataImporter.SetNumberOfScalarComponents(1)
     dataImporter.CopyImportVoidPointer(data_string, len(data_string))
     # For some reason we need to invert the img_data_shape indexing
-    dataImporter.SetDataExtent(0, img_data_shape[1] - 1, 0, img_data_shape[2] - 1, 0, img_data_shape[0] - 1)
-    dataImporter.SetWholeExtent(0, img_data_shape[1] - 1, 0, img_data_shape[2] - 1, 0, img_data_shape[0] - 1)
+    dataImporter.SetDataExtent(0, img_data_shape[0] - 1, 0, img_data_shape[1] - 1, 0, img_data_shape[2] - 1)
+    dataImporter.SetWholeExtent(0, img_data_shape[0] - 1, 0, img_data_shape[1] - 1, 0, img_data_shape[2] - 1)
     dataImporter.Update()
     temp_data = dataImporter.GetOutput()
     new_data = vtk.vtkImageData()
