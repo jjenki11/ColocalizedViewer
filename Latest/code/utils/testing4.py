@@ -445,7 +445,7 @@ class PointSet(object):
             pointType = itk.Point[itk.D, 3]
             pp = pointType()
             pp = self.pointset1.GetPoint(i)
-            print "Point is = " + str(pp.GetElement(0)) + ", " + str(pp.GetElement(1)) + ", " + str(pp.GetElement(2))
+            print ("Point is = " + str(pp.GetElement(0)) + ", " + str(pp.GetElement(1)) + ", " + str(pp.GetElement(2)))
 
 
 # class that represents a landmark and some basic operations on the landmark
@@ -685,8 +685,8 @@ class QVTKRenderWindowInteractor(QtWidgets.QWidget):
         elif hasattr(self._Iren, attr):
             return getattr(self._Iren, attr)
         else:
-            raise AttributeError, self.__class__.__name__ + \
-                  " has no attribute named " + attr
+            raise (AttributeError, self.__class__.__name__ + \
+                  " has no attribute named " + attr)
 
     def SetRenderer(self, r):
         self.ren = r
@@ -900,7 +900,7 @@ def VolumeRenderTest():
     # For this tutorial, we create a 3D-image containing three overlaping cubes.
     # This data can of course easily be replaced by data from a medical CT-scan or anything else three dimensional.
     # The only limit is that the data must be reduced to unsigned 8 bit or 16 bit integers.
-    data_matrix = zeros([75, 75, 75], dtype=uint16)
+    data_matrix = zeros([75, 75, 75], dtype=uint8)
     data_matrix[0:35, 0:35, 0:35] = 50
     data_matrix[25:55, 25:55, 25:55] = 100
     data_matrix[45:74, 45:74, 45:74] = 150
@@ -989,10 +989,10 @@ def QVTKRenderWidgetMain():
 
     # load tiff file
     tiffFile = vtk.vtkTIFFReader()
-    #tiffFile.SetFileName('/stbb_home/jenkinsjc/Desktop/LandmarkTesting/76.tif');
+    tiffFile.SetFileName('/stbb_home/jenkinsjc/Desktop/LandmarkTesting/76.tif');
 
     #   much nicer now that we are doing it with anaconda... doesnt require us to put a path relative to python 
-    tiffFile.SetFileName(os.getcwd()+'\\data\\76.tif')
+    #tiffFile.SetFileName(os.getcwd()+'\\data\\76.tif')
 
     # make a texture out of the tiff file
     tex = vtk.vtkTexture()
