@@ -17,10 +17,10 @@ widget_map = {}
 # GLOBAL props
 textbox_width = 50;
 filebox_width = 150;
-
 default_min_lut = 0;
 default_max_lut = 500;
 
+home_pc = True;
 
 # Register widget by nam e to our global mapping
 def RegisterWidget(name, widget):
@@ -924,33 +924,54 @@ class QVTKRenderWindowInteractor(QtWidgets.QWidget):
     def Render(self):
         self.update()
 
-
-
 class NiftiFile(object):
+
   def __init__(self):
     self.header=None
     self.data=None
+
   def ReadFile(self, fname):
     x = nib.load(fname)
     self.SetHeader(x.header)
     self.data=x
+
   def SetHeader(self, h):
     self.header = h
-  def GetDimensions(self, field):
+
+  def GetField(self, field):
     return self.header[field]
+
+  def GetDimensions(self):
+    return self.GetField('dim')
+
+  def GetVoxelSize(self):
+    return self.GetField('pixdim')
+
+  def GetOrigin(self):
+    return [self.GetField('qoffset_x'), self.GetField('qoffset_y'), self.GetField('qoffset_z')]
+
+
   def PrintHeader(self):
     print(self.header)
+
   def GetData(self):
     return self.data.get_data()
+
   def ToString(self):
     return self.GetData().tostring()
+
+  def GetRange(self):
+      return nib.volumeutils.finite_range(self.GetData())
+
   def GetMin(self):
-    return nib.volumeutils.finite_range(self.GetData())[0]
+    return self.GetRange()[0]
+
   def GetMax(self):
-    return nib.volumeutils.finite_range(self.GetData())[1]
+    return self.GetRange()[1]
+
   def SetType(self, t):
     self.data.set_data_dtype(t)
-
+    print("Data type set to: " + str(t))
 
 
 def MriVolumeRenderTest():
@@ -961,7 +982,11 @@ def MriVolumeRenderTest():
     # The only limit is that the data must be reduced to unsigned 8 bit or 16 bit integers.
 
     nifti = NiftiFile()
-    nifti.ReadFile('/stbb_home/jenkinsjc/dev/ColocalizedViewer/Latest/data/structural_test.nii')
+    if(home_pc):
+        nifti.ReadFile(os.getcwd() + '\\data\\structural_test.nii')
+    else:
+        nifti.ReadFile('/stbb_home/jenkinsjc/dev/ColocalizedViewer/Latest/data/structural_test.nii')
+
     nifti.SetType(np.uint16)
     img_data = nifti.GetData()
 
@@ -973,7 +998,7 @@ def MriVolumeRenderTest():
     data_string = nifti.ToString()
     dataImporter.SetNumberOfScalarComponents(1)
     dataImporter.CopyImportVoidPointer(data_string, len(data_string))
-    # For some reason we need to invert the img_data_shape indexing
+    # For some reason we need to invert the img_data_shape indexing (figure out what the strategy is in general)
     dataImporter.SetDataExtent(0, img_data_shape[0] - 1, 0, img_data_shape[1] - 1, 0, img_data_shape[2] - 1)
     dataImporter.SetWholeExtent(0, img_data_shape[0] - 1, 0, img_data_shape[1] - 1, 0, img_data_shape[2] - 1)
     dataImporter.Update()
@@ -1064,10 +1089,14 @@ def QVTKRenderWidgetMain():
 
     # load tiff file
     tiffFile = vtk.vtkTIFFReader()
-    tiffFile.SetFileName('/stbb_home/jenkinsjc/Desktop/LandmarkTesting/76.tif');
+    if(home_pc):
+        #   much nicer now that we are doing it with anaconda... doesnt require us to put a path relative to python
+        tiffFile.SetFileName(os.getcwd() + '\\data\\76.tif')
+    else:
+        tiffFile.SetFileName('/stbb_home/jenkinsjc/Desktop/LandmarkTesting/76.tif');
 
-    #   much nicer now that we are doing it with anaconda... doesnt require us to put a path relative to python 
-    #tiffFile.SetFileName(os.getcwd()+'\\data\\76.tif')
+
+
 
     # make a texture out of the tiff file
     tex = vtk.vtkTexture()
@@ -1085,10 +1114,6 @@ def QVTKRenderWidgetMain():
     widget_map['plane_actor'] = vtk.vtkActor()
     widget_map['plane_actor'].SetMapper(mapper)
     widget_map['plane_actor'].SetTexture(tex)
-
-
-
-
 
     ren.AddActor(widget_map['plane_actor'])
 
