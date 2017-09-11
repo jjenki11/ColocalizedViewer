@@ -9,18 +9,28 @@ import vtk
 import itk
 import math
 import os
-from numpy import *
+import numpy as np
 
+import nibabel as nib
 # global mapping (only in this file) of widget names to their object
 widget_map = {}
 # GLOBAL props
 textbox_width = 50;
 filebox_width = 150;
 
+default_min_lut = 0;
+default_max_lut = 500;
+
 
 # Register widget by nam e to our global mapping
 def RegisterWidget(name, widget):
     widget_map[name] = widget
+
+def l2n(l):
+    return lambda l: np.array(l)
+
+def n2l(n):
+    return lambda n: list(n)
 
 
 # Subclassed itk matrix
@@ -268,27 +278,40 @@ class Slider(QtWidgets.QSlider):
             widget_map['model_matrix'].RotateX(math.radians(value))
             widget_map['model_matrix'].Update()
             widget_map['model_matrix'].Print(widget_map['model_matrix'].Get())
-
         if (self.disp_label.GetName() == 'y_slider_label'):
             self.disp_label.SetText("Phi: " + str(value))
             widget_map['model_matrix'].RotateY(math.radians(value))
             widget_map['model_matrix'].Update()
             widget_map['model_matrix'].Print(widget_map['model_matrix'].Get())
-
         if (self.disp_label.GetName() == 'z_slider_label'):
             self.disp_label.SetText("Rho: " + str(value))
             widget_map['model_matrix'].RotateZ(math.radians(value))
             widget_map['model_matrix'].Update()
             widget_map['model_matrix'].Print(widget_map['model_matrix'].Get())
 
+        if (self.disp_label.GetName() == 'min_lut_label'):
+            self.disp_label.SetText("Min: " + str(value))
+            widget_map['min_lut_value'] = value
+
+        if (self.disp_label.GetName() == 'max_lut_label'):
+            self.disp_label.SetText("Max: " + str(value))
+            widget_map['max_lut_value'] = value
+
+
+        #   apply color map
+        xferFunc = vtk.vtkPiecewiseFunction()
+        xferFunc.AddPoint(widget_map['min_lut_value'], 0.0)
+        xferFunc.AddPoint(widget_map['max_lut_value'], 360.0)
+        widget_map['mri_volume_property'].SetColor(xferFunc)
+
+        #   apply transformation
         transformation = widget_map['model_matrix'].ToVtkTransform()
         widget_map['plane_actor'].SetUserTransform(transformation)
-
         widget_map['landmark_list'].Reset()
+
         for la in widget_map['landmark_actors']:
             la.SetUserTransform(transformation)
             widget_map['landmark_list'].Insert(str(la.GetCenter()))
-
         widget_map['vtk_widget'].Render()
 
 
@@ -520,6 +543,16 @@ class ButtonController(object):
         widget_map['x_rot_slider'].setValue(0)
         widget_map['y_rot_slider'].setValue(0)
         widget_map['z_rot_slider'].setValue(0)
+
+    def ResetLUT(self):
+        widget_map['min_lut_slider'].setValue(default_min_lut)
+        widget_map['max_lut_slider'].setValue(default_max_lut)
+
+
+        xferFunc = vtk.vtkPiecewiseFunction()
+        xferFunc.AddPoint(0, default_min_lut)
+        xferFunc.AddPoint(550, default_max_lut)
+        widget_map['mri_volume_property'].SetColor(xferFunc)
 
 
 # subclassed qwidget which is actually a composite qt and vtk widget
@@ -817,7 +850,6 @@ class QVTKRenderWindowInteractor(QtWidgets.QWidget):
         elif self._ActiveButton == QtCore.Qt.MidButton:
             self._Iren.MiddleButtonPressEvent()
             print("TBD placeholder for mmc functionality")
-            
 
     def mouseReleaseEvent(self, ev):
         ctrl, shift = self._GetCtrlShift(ev)
@@ -891,37 +923,65 @@ class QVTKRenderWindowInteractor(QtWidgets.QWidget):
 
     def Render(self):
         self.update()
-        
-        
-        
-        
-def VolumeRenderTest():
-        # We begin by creating the data we want to render.
+
+
+
+class NiftiFile(object):
+  def __init__(self):
+    self.header=None
+    self.data=None
+  def ReadFile(self, fname):
+    x = nib.load(fname)
+    self.SetHeader(x.header)
+    self.data=x
+  def SetHeader(self, h):
+    self.header = h
+  def GetDimensions(self, field):
+    return self.header[field]
+  def PrintHeader(self):
+    print(self.header)
+  def GetData(self):
+    return self.data.get_data()
+  def ToString(self):
+    return self.GetData().tostring()
+  def GetMin(self):
+    return nib.volumeutils.finite_range(self.GetData())[0]
+  def GetMax(self):
+    return nib.volumeutils.finite_range(self.GetData())[1]
+  def SetType(self, t):
+    self.data.set_data_dtype(t)
+
+
+
+def MriVolumeRenderTest():
+
+    # We begin by creating the data we want to render.
     # For this tutorial, we create a 3D-image containing three overlaping cubes.
     # This data can of course easily be replaced by data from a medical CT-scan or anything else three dimensional.
     # The only limit is that the data must be reduced to unsigned 8 bit or 16 bit integers.
-    data_matrix = zeros([75, 75, 75], dtype=uint8)
-    data_matrix[0:35, 0:35, 0:35] = 50
-    data_matrix[25:55, 25:55, 25:55] = 100
-    data_matrix[45:74, 45:74, 45:74] = 150
 
-    # For VTK to be able to use the data, it must be stored as a VTK-image. This can be done by the vtkImageImport-class which
-    # imports raw data and stores it.
+    nifti = NiftiFile()
+    nifti.ReadFile('/stbb_home/jenkinsjc/dev/ColocalizedViewer/Latest/data/structural_test.nii')
+    nifti.SetType(np.uint8)
+    img_data = nifti.GetData()
+
+    #img_data = nifti.GetData()
+    img_data_shape = img_data.shape
+
     dataImporter = vtk.vtkImageImport()
-    # The preaviusly created array is converted to a string of chars and imported.
-    data_string = data_matrix.tostring()
-    dataImporter.CopyImportVoidPointer(data_string, len(data_string))
-    # The type of the newly imported data is set to unsigned char (uint8)
     dataImporter.SetDataScalarTypeToUnsignedChar()
-    # Because the data that is imported only contains an intensity value (it isnt RGB-coded or someting similar), the importer
-    # must be told this is the case.
+    data_string = nifti.ToString()
     dataImporter.SetNumberOfScalarComponents(1)
-    # The following two functions describe how the data is stored and the dimensions of the array it is stored in. For this
-    # simple case, all axes are of length 75 and begins with the first element. For other data, this is probably not the case.
-    # I have to admit however, that I honestly dont know the difference between SetDataExtent() and SetWholeExtent() although
-    # VTK complains if not both are used.
-    dataImporter.SetDataExtent(0, 74, 0, 74, 0, 74)
-    dataImporter.SetWholeExtent(0, 74, 0, 74, 0, 74)
+    dataImporter.CopyImportVoidPointer(data_string, len(data_string))
+    # For some reason we need to invert the img_data_shape indexing
+    dataImporter.SetDataExtent(0, img_data_shape[1] - 1, 0, img_data_shape[2] - 1, 0, img_data_shape[0] - 1)
+    dataImporter.SetWholeExtent(0, img_data_shape[1] - 1, 0, img_data_shape[2] - 1, 0, img_data_shape[0] - 1)
+    dataImporter.Update()
+    temp_data = dataImporter.GetOutput()
+    new_data = vtk.vtkImageData()
+    new_data.DeepCopy(temp_data)
+
+
 
     # The following class is used to store transparencyv-values for later retrival. In our case, we want the value 0 to be
     # completly opaque whereas the three different cubes are given different transperancy-values to show how it works.
@@ -934,16 +994,31 @@ def VolumeRenderTest():
 
     # This class stores color data and can create color tables from a few color points. For this demo, we want the three cubes
     # to be of the colors red green and blue.
-    colorFunc = vtk.vtkColorTransferFunction()
-    colorFunc.AddRGBPoint(50, 1.0, 1.0, 0.0)
-    colorFunc.AddRGBPoint(100, 0.0, 1.0, 0.0)
-    colorFunc.AddRGBPoint(150, 0.0, 0.0, 1.0)
+    #colorFunc = vtk.vtkColorTransferFunction()
+    #colorFunc.AddRGBPoint(400, 0.0, 1.0, 0.0)
+    #colorFunc.AddRGBPoint(100, 0.0, 1.0, 0.0)
+    #colorFunc.AddRGBPoint(150, 0.0, 0.0, 1.0)
 
+
+    min_val = nifti.GetMin()
+    max_val = nifti.GetMax()
+
+    print("Min -> " + str(min_val))
+    print("Max -> " + str(max_val))
+
+    widget_map['min_lut_value'] = min_val
+    widget_map['max_lut_value'] = max_val
+
+    xferFunc = vtk.vtkPiecewiseFunction()
+    xferFunc.AddPoint(min_val, 0.0)
+    xferFunc.AddPoint(max_val, 10000)
     # The preavius two classes stored properties. Because we want to apply these properties to the volume we want to render,
     # we have to store them in a class that stores volume prpoperties.
-    volumeProperty = vtk.vtkVolumeProperty()
-    volumeProperty.SetColor(colorFunc)
-    volumeProperty.SetScalarOpacity(alphaChannelFunc)
+
+    widget_map['mri_volume_property'] = vtk.vtkVolumeProperty()
+    #volumeProperty = vtk.vtkVolumeProperty()
+    widget_map['mri_volume_property'].SetColor(xferFunc)
+    widget_map['mri_volume_property'].SetScalarOpacity(alphaChannelFunc)
 
     # This class describes how the volume is rendered (through ray tracing).
     compositeFunction = vtk.vtkVolumeRayCastCompositeFunction()
@@ -955,8 +1030,8 @@ def VolumeRenderTest():
     # The class vtkVolume is used to pair the preaviusly declared volume as well as the properties to be used when rendering that volume.
     volume = vtk.vtkVolume()
     volume.SetMapper(volumeMapper)
-    volume.SetProperty(volumeProperty)
-    
+    volume.SetProperty(widget_map['mri_volume_property'])
+
     return volume
 
 
@@ -1010,17 +1085,14 @@ def QVTKRenderWidgetMain():
     widget_map['plane_actor'] = vtk.vtkActor()
     widget_map['plane_actor'].SetMapper(mapper)
     widget_map['plane_actor'].SetTexture(tex)
-    
-    
-    test_vol = VolumeRenderTest();
-    ren.AddVolume(test_vol)
 
-    
-    
-    
-    
+
+
+
 
     ren.AddActor(widget_map['plane_actor'])
+
+    ren.AddVolume(MriVolumeRenderTest())
 
     widget_map['vtk_widget'].SetRenderer(ren)
     widget_map['vtk_widget'].SetParentActor(widget_map['plane_actor'])
@@ -1031,7 +1103,10 @@ def QVTKRenderWidgetMain():
             Button('Reset rotation', widget_map['button_controller'].ResetRotation, 'reset_rotation_button'),
             Label('Theta: 0', 'x_slider_label'),Slider('h', -180, 180, 1, 'x_rot_slider','x_slider_label'),
             Label('Phi:   0', 'y_slider_label'),Slider('h', -180, 180, 1, 'y_rot_slider','y_slider_label'),
-            Label('Rho:   0', 'z_slider_label'),Slider('h', -180, 180, 1, 'z_rot_slider','z_slider_label')
+            Label('Rho:   0', 'z_slider_label'),Slider('h', -180, 180, 1, 'z_rot_slider','z_slider_label'),
+            Button('Reset LUT', widget_map['button_controller'].ResetLUT, 'reset_lut_button'),
+            Label('Min: 0'  , 'min_lut_label'), Slider('h', 0, 1000000, 0, 'min_lut_slider', 'min_lut_label'),
+            Label('Max: 500', 'max_lut_label'), Slider('h', 0, 1000000, 500, 'max_lut_slider', 'max_lut_label'),
     ])
 
     w = QtWidgets.QWidget()
