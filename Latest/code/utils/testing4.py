@@ -13,8 +13,97 @@ import numpy as np
 
 import nibabel as nib
 
+#from widgets import *
+
+
+# class to hold all utility functions
+class UiUtils(object):
+    def __init__(self):
+        print('utils.')
+
+        # fills relevant fields when the 'fill' button is pressed
+
+    def FillMriFields(self):
+        widget_map['mri_header'] = NiftiFile()
+        widget_map['mri_header'].ReadFile(widget_map['mri_file'].GetText())
+        widget_map['mri_header'].SetHeader(widget_map['mri_header'].header)
+        widget_map['mri_header'].PrintHeader()
+        dim_array = widget_map['mri_header'].GetDimensions()
+        widget_map['mri_n_voxels_x'].SetText(dim_array[1])
+        widget_map['mri_n_voxels_y'].SetText(dim_array[2])
+        widget_map['mri_n_voxels_z'].SetText(dim_array[3])
+        size_array = widget_map['mri_header'].GetVoxelSize()
+        widget_map['mri_s_voxels_x'].SetText(size_array[1])
+        widget_map['mri_s_voxels_y'].SetText(size_array[2])
+        widget_map['mri_s_voxels_z'].SetText(size_array[3])
+
+    #  Creates a popup
+    def CreatePopup(self):
+        popup = OkPopup(['setup_window'], ['vtk_options_frame', 'vtk_widget'])
+
+    # opens a file dialog and populates the mrifile field
+    def mriopenfile(self):
+        fname = QtWidgets.QFileDialog.getOpenFileName()
+        str_fname = ''.join(fname[0])
+        print str_fname
+        widget_map['mri_file'].SetText(str_fname)
+
+    # opens a file dialog and populates the histofile field
+    def histoopenfile(self):
+        fname = QtWidgets.QFileDialog.getOpenFileName()
+        str_fname = ''.join(fname[0])
+        print str_fname
+        widget_map['histo_file'].SetText(str_fname)
+
+
+
+    def SetupHistologyActor(self):
+        # create plane as base obj
+        widget_map['plane_widget'] = vtk.vtkPlaneSource()
+        widget_map['plane_widget'].Update()
+
+        # load tiff file
+        tiffFile = vtk.vtkTIFFReader()
+
+        if (home_pc):
+            #   much nicer now that we are doing it with anaconda... doesnt require us to put a path relative to python
+            tiffFile.SetFileName(os.getcwd() + '\\data\\76.tif')
+        elif (from_gui):
+            tiffFile.SetFileName(widget_map['histo_file'].GetText())
+        else:
+            tiffFile.SetFileName('/stbb_home/jenkinsjc/Desktop/LandmarkTesting/76.tif');
+
+        # make a texture out of the tiff file
+        tex = vtk.vtkTexture()
+        tex.SetInputConnection(tiffFile.GetOutputPort())
+
+        # make a texture mapper for the plane
+        map_to_plane = vtk.vtkTextureMapToPlane()
+        map_to_plane.SetInputConnection(widget_map['plane_widget'].GetOutputPort())
+
+        # mapper
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputConnection(map_to_plane.GetOutputPort())
+
+        # actor
+        widget_map['plane_actor'] = vtk.vtkActor()
+        widget_map['plane_actor'].SetMapper(mapper)
+        widget_map['plane_actor'].SetTexture(tex)
+        widget_map['vtk_widget'].SetParentActor(widget_map['plane_actor'])
+        widget_map['v_ren'].AddActor(widget_map['plane_actor'])
+
+
+    def SetupMriActor(self):
+        widget_map['v_ren'].AddVolume(MriVolumeRenderTest())
+
+
+
 # global mapping (only in this file) of widget names to their object
 widget_map = {}
+
+g_utils = UiUtils()
+
+
 # GLOBAL props
 textbox_width = 50;
 filebox_width = 150;
@@ -23,10 +112,21 @@ default_max_lut = 500.0;
 
 home_pc = False;
 
+from_gui = True;
+
 
 # Register widget by nam e to our global mapping
 def RegisterWidget(name, widget):
     widget_map[name] = widget
+
+
+def ShowWidgets(w_list):
+    for w in w_list:
+        widget_map[w].show()
+
+def HideWidgets(w_list):
+    for w in w_list:
+        widget_map[w].hide()
 
 
 def l2n(l):
@@ -175,14 +275,26 @@ class VolumeRenderer(object):
 
 # Subclassed qframe widget
 class Frame(QtWidgets.QFrame):
-    def __init__(self, box_type, contents):
+    def __init__(self, box_type, _contents):
         super(Frame, self).__init__()
-        box = None
-        if (box_type == 'h'):
-            box = HBox(contents)
-        if (box_type == 'v'):
-            box = VBox(contents)
-        self.setLayout(box)
+        self.layout = None
+        self.type = box_type
+        self.contents = _contents
+        if (self.type == 'h'):
+            self.layout = HBox(self.contents)
+        if (self.type == 'v'):
+            self.layout = VBox(self.contents)
+        self.setLayout(self.layout)
+
+    def Append(self, cont):
+        self.contents.append(cont)
+        if(self.type == 'h'):
+            self.layout = HBox(self.contents)
+        if (self.type == 'v'):
+            self.layout = VBox(self.contents)
+        wid = QtWidgets.QWidget(self)
+        self.setCentralWidget(wid)
+        wid.setLayout(self.layout)
 
 
 # Subclassed horizontal container widget
@@ -209,7 +321,7 @@ class VBox(QtWidgets.QVBoxLayout):
 
 # Subclassed text box widget
 class TextBox(QtWidgets.QLineEdit):
-    def __init__(self, txt, size, w_name):
+    def __init__(self, txt, size, w_name=None):
         super(TextBox, self).__init__()
         self.SetText(txt)
         self.setFixedWidth(size)
@@ -224,7 +336,7 @@ class TextBox(QtWidgets.QLineEdit):
 
 # Subclassed label widget
 class Label(QtWidgets.QLabel):
-    def __init__(self, t, w_name):
+    def __init__(self, t, w_name=None):
         super(Label, self).__init__(t)
         self.SetText(t)
         self.name = w_name
@@ -239,7 +351,7 @@ class Label(QtWidgets.QLabel):
 
 # Subclassed button widget
 class Button(QtWidgets.QPushButton):
-    def __init__(self, t, f, w_name):
+    def __init__(self, t, f, w_name=None):
         super(Button, self).__init__()
         self.Text(t)
         self.clicked.connect(f)
@@ -329,7 +441,7 @@ class DropDown(QtWidgets.QComboBox):
 
 # Subclassed list widget
 class List(QtWidgets.QListWidget):
-    def __init__(self, it, w_name):
+    def __init__(self, it, w_name=None):
         super(List, self).__init__()
 
         self.items = []
@@ -733,6 +845,9 @@ class QVTKRenderWindowInteractor(QtWidgets.QWidget):
     def TimerEvent(self):
         self._Iren.TimerEvent()
 
+    def AddActor(self, a):
+        self.ren.addActor(a)
+
     def CursorChangedEvent(self, obj, evt):
         """Called when the CursorChangedEvent fires on the render window."""
         # This indirection is needed since when the event fires, the current
@@ -977,6 +1092,10 @@ def MriVolumeRenderTest():
     nifti = NiftiFile()
     if (home_pc):
         nifti.ReadFile(os.getcwd() + '\\data\\structural_test.nii')
+
+    elif(from_gui):
+        nifti.ReadFile(widget_map['mri_file'].GetText())
+
     else:
         nifti.ReadFile('/stbb_home/jenkinsjc/dev/ColocalizedViewer/Latest/data/structural_test.nii')
 
@@ -1051,9 +1170,108 @@ def MriVolumeRenderTest():
     return volume
 
 
+
+
+
+
+# This class is the input validation (yes/no) check
+class OkPopup(QtWidgets.QMessageBox):
+    def __init__(self, to_hide, to_show):
+        super(OkPopup, self).__init__()
+        self.InitUi(to_hide, to_show)
+        #self.exec_()
+        self.show()
+
+    def InitUi(self, hide, show):
+        #self.setText()
+        #self.setInformativeText('Are all of these values correct?')
+        #self.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+        #self.setDefaultButton(QtWidgets.QMessageBox.Yes)
+        buttonReply = QtWidgets.QMessageBox.question(self, 'Check your values', self.FormatText(), QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
+        if buttonReply == QtWidgets.QMessageBox.Yes:
+            print('Yes clicked.')
+            self.hide()
+
+            g_utils.SetupHistologyActor()
+            g_utils.SetupMriActor()
+
+
+            ShowWidgets(show)
+            HideWidgets(hide)
+
+        else:
+            print('No clicked.')
+            self.hide()
+            #widget_map[to_show].hide()
+
+
+
+
+        # Formats text in the relevant widgets and displays in a popup message
+
+    def FormatText(self):
+        labels = ["MRI Voxel dimension: ", "MRI Voxel size: ", "Histology Voxel dimension: ", "Histology Voxel size: ",
+                  "Number of Histology Image Levels: "]
+        mri_voxel_values = [widget_map['mri_n_voxels_x'].GetText(), '    ', widget_map['mri_n_voxels_y'].GetText(),
+                            '   ', widget_map['mri_n_voxels_z'].GetText()]
+        mri_voxel_sizes = [widget_map['mri_s_voxels_x'].GetText(), '   ', widget_map['mri_s_voxels_y'].GetText(), '   ',
+                           widget_map['mri_s_voxels_z'].GetText()]
+        histo_voxel_values = [widget_map['histo_n_voxels_x'].GetText(), '    ',
+                              widget_map['histo_n_voxels_y'].GetText(), '   ', widget_map['histo_n_voxels_z'].GetText()]
+        histo_voxel_sizes = [widget_map['histo_s_voxels_x'].GetText(), '   ', widget_map['histo_s_voxels_y'].GetText(),
+                             '   ', widget_map['histo_s_voxels_z'].GetText()]
+        n_levels = widget_map['num_levels'].GetText()
+        fields = [mri_voxel_values, mri_voxel_sizes, histo_voxel_values, histo_voxel_sizes, n_levels]
+        string = ""
+        for i in range(0, len(labels)):
+            fields_str = ""
+            curr_field = fields[i]
+            for j in range(0, len(curr_field)):
+                fields_str = fields_str + str(curr_field[j])
+            string = string + labels[i] + str(fields_str) + '\n'
+        return ''.join(string)
+
+
+class MainWindow(QtWidgets.QWidget):
+  def __init__(self):
+    super(MainWindow, self).__init__()
+    #self.utils = UiUtils()
+    window_layout = VBox([self.buildmri(), self.buildhisto(),self.buildoutput()])
+    self.setLayout(window_layout)
+    self.show()
+  def mri_row1(self):
+    return Frame('h',  [Label('MRI File'), TextBox("", filebox_width, 'mri_file'), Button('File', g_utils.mriopenfile), Button('Fill',  g_utils.FillMriFields)])
+  def mri_row2(self):
+    return Frame('h', [Label('X'), TextBox("",textbox_width,'mri_n_voxels_x'), Label('Y'), TextBox("",textbox_width,'mri_n_voxels_y'), Label('Z'), TextBox("",textbox_width, 'mri_n_voxels_z')])
+  def mri_row3(self):
+    return Frame('h', [Label('size X'), TextBox("",textbox_width, 'mri_s_voxels_x'), Label('size Y'), TextBox("",textbox_width,'mri_s_voxels_y'), Label('size Z'), TextBox("",textbox_width,'mri_s_voxels_z')])
+  # build the mri part of the gui
+  def buildmri(self):
+    return Frame('v', [Label('1. MRI Info'), self.mri_row1(), self.mri_row2(), self.mri_row3()])
+  def histo_row1(self):
+    return Frame('h', [Label('Histology File'), TextBox("", filebox_width, 'histo_file'), Button('File', g_utils.histoopenfile)])
+  def histo_row2(self):
+    return Frame('h', [Label('X'), TextBox("", textbox_width, 'histo_n_voxels_x'), Label('Y'), TextBox("", textbox_width, 'histo_n_voxels_y'), Label('Z'), TextBox("", textbox_width, 'histo_n_voxels_z')])
+  def histo_row3(self):
+    return Frame('h', [Label('size X'), TextBox("", textbox_width, 'histo_s_voxels_x'), Label('size Y'), TextBox("", textbox_width, 'histo_s_voxels_y'), Label('size Z'), TextBox("", textbox_width, 'histo_s_voxels_z')])
+  # build the histology part of the gui
+  def buildhisto(self):
+    return Frame('v', [Label('2. Histology Info'), self.histo_row1(), self.histo_row2(), self.histo_row3()])
+  def out_row(self):
+    return Frame('h', [Label('Number of Levels:'), DropDown(['1','2','3','4','5'], 'num_levels')])
+  # build the output part of the gui
+  def buildoutput(self):
+    return Frame('v', [Label('3. Output'), self.out_row(), Button('OK', g_utils.CreatePopup)])
+
+
+
 # Setup the qpplication elements
 def QVTKRenderWidgetMain():
     """A simple example that uses the QVTKRenderWindowInteractor class."""
+
+    # every QT app needs an app
+    widget_map['main_application'] = QtWidgets.QApplication(['QVTKRenderWindowInteractor'])
+    widget_map['root_window'] = QtWidgets.QWidget()
 
     widget_map['model_matrix'] = Matrix()
 
@@ -1061,79 +1279,57 @@ def QVTKRenderWidgetMain():
 
     widget_map['button_controller'] = ButtonController()
 
-    # every QT app needs an app
-    app = QtWidgets.QApplication(['QVTKRenderWindowInteractor'])
-
     # create the widget
-    widget_map['vtk_widget'] = QVTKRenderWindowInteractor()
+    widget_map['vtk_widget'] = (QVTKRenderWindowInteractor())
     widget_map['vtk_widget'].Initialize()
     widget_map['vtk_widget'].Start()
     # if you dont want the 'q' key to exit comment this.
-    widget_map['vtk_widget'].AddObserver("ExitEvent", lambda o, e, a=app: a.quit())
+    widget_map['vtk_widget'].AddObserver("ExitEvent", lambda o, e, a=widget_map['main_application']: a.quit())
 
-    ren = vtk.vtkRenderer()
-    widget_map['vtk_widget'].GetRenderWindow().AddRenderer(ren)
+    widget_map['v_ren'] = vtk.vtkRenderer()
 
-    # create plane as base obj
-    widget_map['plane_widget'] = vtk.vtkPlaneSource()
-    widget_map['plane_widget'].Update()
+    widget_map['vtk_widget'].GetRenderWindow().AddRenderer(widget_map['v_ren'])
 
-    # load tiff file
-    tiffFile = vtk.vtkTIFFReader()
-    if (home_pc):
-        #   much nicer now that we are doing it with anaconda... doesnt require us to put a path relative to python
-        tiffFile.SetFileName(os.getcwd() + '\\data\\76.tif')
-    else:
-        tiffFile.SetFileName('/stbb_home/jenkinsjc/Desktop/LandmarkTesting/76.tif');
+    widget_map['vtk_widget'].SetRenderer(widget_map['v_ren'])
 
-    # make a texture out of the tiff file
-    tex = vtk.vtkTexture()
-    tex.SetInputConnection(tiffFile.GetOutputPort())
 
-    # make a texture mapper for the plane
-    map_to_plane = vtk.vtkTextureMapToPlane()
-    map_to_plane.SetInputConnection(widget_map['plane_widget'].GetOutputPort())
 
-    # mapper
-    mapper = vtk.vtkPolyDataMapper()
-    mapper.SetInputConnection(map_to_plane.GetOutputPort())
 
-    # actor
-    widget_map['plane_actor'] = vtk.vtkActor()
-    widget_map['plane_actor'].SetMapper(mapper)
-    widget_map['plane_actor'].SetTexture(tex)
 
-    ren.AddActor(widget_map['plane_actor'])
+    #   this is the setup window where we input our mri and slice files.
+    widget_map['setup_window'] = MainWindow()
 
-    ren.AddVolume(MriVolumeRenderTest())
+    widget_map['vtk_options_frame'] = Frame('v', [
+                Label('Landmark Points', 'lps'),
+                List([], 'landmark_list'),
+                Button('Reset rotation', widget_map['button_controller'].ResetRotation, 'reset_rotation_button'),
+                Label('Theta: 0', 'x_slider_label'), Slider('h', -180, 180, 1, 'x_rot_slider', 'x_slider_label'),
+                Label('Phi:   0', 'y_slider_label'), Slider('h', -180, 180, 1, 'y_rot_slider', 'y_slider_label'),
+                Label('Rho:   0', 'z_slider_label'), Slider('h', -180, 180, 1, 'z_rot_slider', 'z_slider_label'),
+                Button('Reset LUT', widget_map['button_controller'].ResetLUT, 'reset_lut_button'),
+                Label('Min: 0', 'min_lut_label'), Slider('h', 0, 10000, 0, 'min_lut_slider', 'min_lut_label'),
+                Label('Max: 500', 'max_lut_label'), Slider('h', 0, 10000, 500, 'max_lut_slider', 'max_lut_label'),
+            ])
+    #widget_map['vtk_widget_frame'] = Frame('v',[]) #None #QtWidgets.QWidget([])
+    #widget_map['vtk_widget_frame'] = VBox([])
 
-    widget_map['vtk_widget'].SetRenderer(ren)
-    widget_map['vtk_widget'].SetParentActor(widget_map['plane_actor'])
 
-    main_frame = Frame('v', [
-        Label('Landmark Points', 'lps'),
-        List([], 'landmark_list'),
-        Button('Reset rotation', widget_map['button_controller'].ResetRotation, 'reset_rotation_button'),
-        Label('Theta: 0', 'x_slider_label'), Slider('h', -180, 180, 1, 'x_rot_slider', 'x_slider_label'),
-        Label('Phi:   0', 'y_slider_label'), Slider('h', -180, 180, 1, 'y_rot_slider', 'y_slider_label'),
-        Label('Rho:   0', 'z_slider_label'), Slider('h', -180, 180, 1, 'z_rot_slider', 'z_slider_label'),
-        Button('Reset LUT', widget_map['button_controller'].ResetLUT, 'reset_lut_button'),
-        Label('Min: 0', 'min_lut_label'), Slider('h', 0, 10000, 0, 'min_lut_slider', 'min_lut_label'),
-        Label('Max: 500', 'max_lut_label'), Slider('h', 0, 10000, 500, 'max_lut_slider', 'max_lut_label'),
-    ])
-
-    w = QtWidgets.QWidget()
-
-    w.setLayout(HBox([
-        main_frame,
+    widget_map['root_window'].setLayout(HBox([
+        widget_map['setup_window'],
+        widget_map['vtk_options_frame'],
         widget_map['vtk_widget']
     ]))
-    w.show()
+    widget_map['root_window'].show()
+
+    #   initially, hide the vtk stuff
+    widget_map['vtk_options_frame'].hide()
+    widget_map['vtk_widget'].hide()
 
     # start event processing
-    app.exec_()
+    widget_map['main_application'].exec_()
 
 
 # The main entry point
 if __name__ == "__main__":
+
     QVTKRenderWidgetMain()
