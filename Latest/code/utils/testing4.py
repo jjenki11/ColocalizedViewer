@@ -12,6 +12,7 @@ import os
 import numpy as np
 
 import nibabel as nib
+
 # global mapping (only in this file) of widget names to their object
 widget_map = {}
 # GLOBAL props
@@ -20,14 +21,17 @@ filebox_width = 150;
 default_min_lut = 0.0;
 default_max_lut = 500.0;
 
-home_pc = True;
+home_pc = False;
+
 
 # Register widget by nam e to our global mapping
 def RegisterWidget(name, widget):
     widget_map[name] = widget
 
+
 def l2n(l):
     return lambda l: np.array(l)
+
 
 def n2l(n):
     return lambda n: list(n)
@@ -38,13 +42,13 @@ class Matrix(object):
     def __init__(self):
         self.m = itk.Matrix.D44()
         self.m.SetIdentity()
-        
+
         self.tx = itk.Matrix.D44()
         self.tx.SetIdentity()
-        
+
         self.ty = itk.Matrix.D44()
         self.ty.SetIdentity()
-        
+
         self.tz = itk.Matrix.D44()
         self.tz.SetIdentity()
 
@@ -59,16 +63,16 @@ class Matrix(object):
 
     def Get(self):
         return self.m.GetVnlMatrix()
-        
+
     def GetTx(self):
         return self.tx
-        
+
     def GetTy(self):
         return self.ty
-        
+
     def GetTz(self):
         return self.tz
-        
+
     def GetRx(self):
         return self.rx
 
@@ -91,8 +95,8 @@ class Matrix(object):
         self.Update()
 
     def Print(self, m):
-        mat=None
-        if(m):
+        mat = None
+        if (m):
             mat = self.Get()
         else:
             mat = m.GetVnlMatrix()
@@ -108,7 +112,6 @@ class Matrix(object):
         print(r4)
         print("")
         self.Update()
-
 
     def RotateX(self, rot):
         self.rx.GetVnlMatrix().set(1, 1, math.cos(rot))
@@ -162,14 +165,12 @@ class Matrix(object):
         vmat.SetMatrix(mat)
         vmat.Update()
         return vmat
-        
-        
-        
+
+
 # Subclassed vtk volume rendering stuff
 class VolumeRenderer(object):
     def __init__(self):
         pass
-
 
 
 # Subclassed qframe widget
@@ -252,11 +253,11 @@ class Button(QtWidgets.QPushButton):
 # Subclassed slider widget with some global operations
 class Slider(QtWidgets.QSlider):
     def __init__(self, _dir, _min, _max, _step, w_name, l_name):
-        if(_dir=='h'):
+        if (_dir == 'h'):
             super(Slider, self).__init__(QtCore.Qt.Horizontal)
-        if(_dir=='v'):
+        if (_dir == 'v'):
             super(Slider, self).__init__(QtCore.Qt.Vertical)
-        #slider = QSlider(Qt.Horizontal)
+        # slider = QSlider(Qt.Horizontal)
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.setTickPosition(self.TicksBothSides)
         self.setMinimum(_min)
@@ -267,7 +268,7 @@ class Slider(QtWidgets.QSlider):
         self.valueChanged[int].connect(self.changeValue)
         self.sliderMoved.connect(self.changeValue)
         RegisterWidget(w_name, self)
-        
+
     def GetValue(self):
         return self.value()
 
@@ -297,8 +298,7 @@ class Slider(QtWidgets.QSlider):
             self.disp_label.SetText("Max: " + str(value))
             widget_map['max_lut_value'] = value
 
-
-        #   apply color map
+        # apply color map
         xferFunc = vtk.vtkPiecewiseFunction()
         xferFunc.AddPoint(widget_map['min_lut_value'], 0.0)
         xferFunc.AddPoint(widget_map['max_lut_value'], 255.0)
@@ -332,14 +332,14 @@ class List(QtWidgets.QListWidget):
     def __init__(self, it, w_name):
         super(List, self).__init__()
 
-        self.items=[]
-        if(len(it)>0):
-            self.items=it
+        self.items = []
+        if (len(it) > 0):
+            self.items = it
             self.addItems(self.items)
         RegisterWidget(w_name, self)
 
     def Reset(self):
-        self.items=[]
+        self.items = []
         self.clear()
 
     def Insert(self, it):
@@ -381,29 +381,29 @@ class List(QtWidgets.QListWidget):
         else:
             key = chr(0)
 
-        if(ev.key() == QtCore.Qt.Key_Delete):
+        if (ev.key() == QtCore.Qt.Key_Delete):
             print("PRESSED DELETE (list event)!!!")
-            #print("THE ITEM -> " + str(self.GetItemAtIndex().text()))
-            #_pos = str(self.GetItemAtIndex().text())
-            #parr = []
-            #_posstr = _pos.replace('[', '').replace(']', '')
-            #parr = _posstr.split(',')
-            #fparr = []
-            #for p in parr:
+            # print("THE ITEM -> " + str(self.GetItemAtIndex().text()))
+            # _pos = str(self.GetItemAtIndex().text())
+            # parr = []
+            # _posstr = _pos.replace('[', '').replace(']', '')
+            # parr = _posstr.split(',')
+            # fparr = []
+            # for p in parr:
             #    fparr.append(float(p))
-            #print("POS -> " + str(_pos))
-            #act = GetPickedActor(fparr, widget_map['vtk_widget'].ren)
-            #print("What is act?  "+str(act))
-            #if (act ):
+            # print("POS -> " + str(_pos))
+            # act = GetPickedActor(fparr, widget_map['vtk_widget'].ren)
+            # print("What is act?  "+str(act))
+            # if (act ):
             #    widget_map['vtk_widget'].ren.RemoveActor(act)
             #    widget_map['vtk_widget'].Marks.RemoveLandmark(act)
-            #self.Remove()
+            # self.Remove()
 
 
 # create a landmark and add it to the renderer
 def MakeLandmark(pos):
     source = vtk.vtkSphereSource()
-    source.SetCenter(pos[0],pos[1],pos[2])
+    source.SetCenter(pos[0], pos[1], pos[2])
     source.SetRadius(0.1)
     source.Update()
     _mapper = vtk.vtkPolyDataMapper()
@@ -432,11 +432,13 @@ def GetPickedActor(_ePos, _ren):
 
 # class that is a point object (tbd refactor to combine point and landmark)
 class Point(object):
-    def __init__(self,pt):
+    def __init__(self, pt):
         pixeltype = itk.D
         dim = 3
         self.p = itk.Point[pixeltype, dim]()
-        self.p.SetElement(0, pt[0]); self.p.SetElement(1, pt[1]); self.p.SetElement(2, pt[2]);
+        self.p.SetElement(0, pt[0]);
+        self.p.SetElement(1, pt[1]);
+        self.p.SetElement(2, pt[2]);
 
     def Get(self):
         return self
@@ -453,11 +455,12 @@ class PointSet(object):
         self.pointset1 = self.pointsettype.New()
         self.points = self.pointset1.GetPoints()
 
-
     def AddPoint(self, p):
         self.length = self.length + 1
         pt = itk.Point[self.pixeltype, self.dim]()
-        pt[0] = p[0];pt[1] = p[1];pt[2] = p[2];
+        pt[0] = p[0];
+        pt[1] = p[1];
+        pt[2] = p[2];
         self.points.InsertElement(self.length, pt)
 
     def GetPoints(self):
@@ -473,26 +476,24 @@ class PointSet(object):
 
 # class that represents a landmark and some basic operations on the landmark
 class Landmark(object):
-
     def __init__(self):
-        self.x=0
-        self.y=0
-        self.z=0
+        self.x = 0
+        self.y = 0
+        self.z = 0
 
 
 # class that holds a set of landmarks with some basic operations on the set
 class LandmarkSet(object):
-
     def __init__(self):
-        self.actors=[]
-        self.points=[]
+        self.actors = []
+        self.points = []
 
     def AddLandmark(self, _mark, _pos):
         self.actors.append(_mark)
         self.points.append(_pos)
         print("Added point to set.")
-        print("we now have => "+str(len(self.points)))
-        #widget_map['landmark_list'].Insert(str(_pos))
+        print("we now have => " + str(len(self.points)))
+        # widget_map['landmark_list'].Insert(str(_pos))
 
     def RemoveLandmark(self, _mark):
         if (_mark in self.actors) and isinstance(self.actors.index(_mark), int):
@@ -506,13 +507,13 @@ class LandmarkSet(object):
             return idx
 
     def RemoveCurrentLandmark(self):
-        #idx = self.actors.index(_mark)
+        # idx = self.actors.index(_mark)
         _mark = widget_map['landmark_list'].GetItemAtIndex()
         print("REMOVING CURRENT SELECTION -> " + str(_mark))
         return self.RemoveLandmark(_mark)
 
     def ExtractPoints(self):
-        pts=[]
+        pts = []
         for p in self.points:
             print("POSITION -> " + str(p))
             pts.append(p)
@@ -523,8 +524,8 @@ class LandmarkSet(object):
         f.close()
 
     def Load(self, fn):
-        self.actors=[]
-        self.points=[]
+        self.actors = []
+        self.points = []
         f = open(fn, 'r+')
         for line in f:
             self.actors.append(MakeLandmark(','.join(line)))
@@ -535,7 +536,6 @@ class LandmarkSet(object):
 
 # controller for different global button actions
 class ButtonController(object):
-
     def __init__(self):
         print("Created button controller")
 
@@ -548,7 +548,6 @@ class ButtonController(object):
         widget_map['min_lut_slider'].setValue(default_min_lut)
         widget_map['max_lut_slider'].setValue(default_max_lut)
 
-
         xferFunc = vtk.vtkPiecewiseFunction()
         xferFunc.AddPoint(default_min_lut, 0.0)
         xferFunc.AddPoint(default_max_lut, 255.0)
@@ -557,7 +556,6 @@ class ButtonController(object):
 
 # subclassed qwidget which is actually a composite qt and vtk widget
 class QVTKRenderWindowInteractor(QtWidgets.QWidget):
-
     """ A QVTKRenderWindowInteractor for Python and Qt.  Uses a
     vtkGenericRenderWindowInteractor to handle the interactions.  Use
     GetRenderWindow() to get the vtkRenderWindow.  Create with the
@@ -627,17 +625,17 @@ class QVTKRenderWindowInteractor(QtWidgets.QWidget):
 
     # Map between VTK and Qt cursors.
     _CURSOR_MAP = {
-        0:  QtCore.Qt.ArrowCursor,          # VTK_CURSOR_DEFAULT
-        1:  QtCore.Qt.ArrowCursor,          # VTK_CURSOR_ARROW
-        2:  QtCore.Qt.SizeBDiagCursor,      # VTK_CURSOR_SIZENE
-        3:  QtCore.Qt.SizeFDiagCursor,      # VTK_CURSOR_SIZENWSE
-        4:  QtCore.Qt.SizeBDiagCursor,      # VTK_CURSOR_SIZESW
-        5:  QtCore.Qt.SizeFDiagCursor,      # VTK_CURSOR_SIZESE
-        6:  QtCore.Qt.SizeVerCursor,        # VTK_CURSOR_SIZENS
-        7:  QtCore.Qt.SizeHorCursor,        # VTK_CURSOR_SIZEWE
-        8:  QtCore.Qt.SizeAllCursor,        # VTK_CURSOR_SIZEALL
-        9:  QtCore.Qt.PointingHandCursor,   # VTK_CURSOR_HAND
-        10: QtCore.Qt.CrossCursor,          # VTK_CURSOR_CROSSHAIR
+        0: QtCore.Qt.ArrowCursor,  # VTK_CURSOR_DEFAULT
+        1: QtCore.Qt.ArrowCursor,  # VTK_CURSOR_ARROW
+        2: QtCore.Qt.SizeBDiagCursor,  # VTK_CURSOR_SIZENE
+        3: QtCore.Qt.SizeFDiagCursor,  # VTK_CURSOR_SIZENWSE
+        4: QtCore.Qt.SizeBDiagCursor,  # VTK_CURSOR_SIZESW
+        5: QtCore.Qt.SizeFDiagCursor,  # VTK_CURSOR_SIZESE
+        6: QtCore.Qt.SizeVerCursor,  # VTK_CURSOR_SIZENS
+        7: QtCore.Qt.SizeHorCursor,  # VTK_CURSOR_SIZEWE
+        8: QtCore.Qt.SizeAllCursor,  # VTK_CURSOR_SIZEALL
+        9: QtCore.Qt.PointingHandCursor,  # VTK_CURSOR_HAND
+        10: QtCore.Qt.CrossCursor,  # VTK_CURSOR_CROSSHAIR
     }
 
     def __init__(self, parent=None, wflags=QtCore.Qt.WindowFlags(), **kw):
@@ -675,16 +673,16 @@ class QVTKRenderWindowInteractor(QtWidgets.QWidget):
             rw = kw['rw']
 
         # create qt-level widget
-        super(QVTKRenderWindowInteractor, self).__init__(parent, wflags|QtCore.Qt.MSWindowsOwnDC)
+        super(QVTKRenderWindowInteractor, self).__init__(parent, wflags | QtCore.Qt.MSWindowsOwnDC)
 
-        if rw: # user-supplied render window
+        if rw:  # user-supplied render window
             self._RenderWindow = rw
         else:
             self._RenderWindow = vtk.vtkRenderWindow()
 
         self._RenderWindow.SetWindowInfo(str(int(self.winId())))
 
-        if stereo: # stereo mode
+        if stereo:  # stereo mode
             self._RenderWindow.StereoCapableWindowOn()
             self._RenderWindow.SetStereoTypeToCrystalEyes()
 
@@ -693,13 +691,11 @@ class QVTKRenderWindowInteractor(QtWidgets.QWidget):
         else:
             self._Iren = vtk.vtkGenericRenderWindowInteractor()
             self._Iren.SetRenderWindow(self._RenderWindow)
-            
-        
 
         # do all the necessary qt setup
         self.setAttribute(QtCore.Qt.WA_OpaquePaintEvent)
         self.setAttribute(QtCore.Qt.WA_PaintOnScreen)
-        self.setMouseTracking(True) # get all mouse events
+        self.setMouseTracking(True)  # get all mouse events
         self.setFocusPolicy(QtCore.Qt.WheelFocus)
         self.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
 
@@ -719,7 +715,7 @@ class QVTKRenderWindowInteractor(QtWidgets.QWidget):
             return getattr(self._Iren, attr)
         else:
             raise (AttributeError, self.__class__.__name__ + \
-                  " has no attribute named " + attr)
+                   " has no attribute named " + attr)
 
     def SetRenderer(self, r):
         self.ren = r
@@ -817,16 +813,16 @@ class QVTKRenderWindowInteractor(QtWidgets.QWidget):
         self._ActiveButton = ev.button()
 
         if self._ActiveButton == QtCore.Qt.LeftButton:
-            
+
             act = GetPickedActor(self.GetEventPosition(), self.ren)
-            if(act and act == self.parentActor):
+            if (act and act == self.parentActor):
 
                 l = GetPickedLocation(self.GetEventPosition(), self.ren);
                 a = MakeLandmark(l)
                 self.ren.AddActor(a)
                 widget_map['landmark_points'].AddLandmark(a, l)
                 widget_map['landmark_list'].Insert(str(l))
-                #self.Points.PrintPoints()  - correct but somehow decoupled from the landmark list
+                # self.Points.PrintPoints()  - correct but somehow decoupled from the landmark list
                 self.Render()
 
             else:
@@ -881,14 +877,13 @@ class QVTKRenderWindowInteractor(QtWidgets.QWidget):
         else:
             key = chr(0)
 
-        if(ev.key() == QtCore.Qt.Key_Delete):
+        if (ev.key() == QtCore.Qt.Key_Delete):
             print("PRESSED DELETE (vtk event)!!!")
-            #_pos = self.Marks.RemoveCurrentLandmark()
-            #print("POS -> " + str(_pos))
-            #act = GetPickedActor(_pos, self.ren)
-            #if (act and act != self.parentActor):
+            # _pos = self.Marks.RemoveCurrentLandmark()
+            # print("POS -> " + str(_pos))
+            # act = GetPickedActor(_pos, self.ren)
+            # if (act and act != self.parentActor):
             #    self.ren.RemoveActor(act)
-
 
         self._Iren.SetEventInformationFlipY(self.__saveX, self.__saveY,
                                             ctrl, shift, key, 0, None)
@@ -924,107 +919,102 @@ class QVTKRenderWindowInteractor(QtWidgets.QWidget):
     def Render(self):
         self.update()
 
+
 class NiftiFile(object):
+    def __init__(self):
+        self.header = None
+        self.data = None
 
-  def __init__(self):
-    self.header=None
-    self.data=None
+    def ReadFile(self, fname):
+        x = nib.load(fname)
+        self.SetHeader(x.header)
+        self.data = x
 
-  def ReadFile(self, fname):
-    x = nib.load(fname)
-    self.SetHeader(x.header)
-    self.data=x
+    def SetHeader(self, h):
+        self.header = h
 
-  def SetHeader(self, h):
-    self.header = h
+    def GetField(self, field):
+        return self.header[field]
 
-  def GetField(self, field):
-    return self.header[field]
+    def GetDimensions(self):
+        return self.GetField('dim')
 
-  def GetDimensions(self):
-    return self.GetField('dim')
+    def GetVoxelSize(self):
+        return self.GetField('pixdim')
 
-  def GetVoxelSize(self):
-    return self.GetField('pixdim')
+    def GetOrigin(self):
+        return [self.GetField('qoffset_x'), self.GetField('qoffset_y'), self.GetField('qoffset_z')]
 
-  def GetOrigin(self):
-    return [self.GetField('qoffset_x'), self.GetField('qoffset_y'), self.GetField('qoffset_z')]
+    def PrintHeader(self):
+        print(self.header)
 
+    def GetData(self):
+        return self.data.get_data()
 
-  def PrintHeader(self):
-    print(self.header)
+    def ToString(self):
+        return self.GetData().tostring()
 
-  def GetData(self):
-    return self.data.get_data()
+    def GetRange(self):
+        return nib.volumeutils.finite_range(self.GetData())
 
-  def ToString(self):
-    return self.GetData().tostring()
+    def GetMin(self):
+        return self.GetRange()[0]
 
-  def GetRange(self):
-      return nib.volumeutils.finite_range(self.GetData())
+    def GetMax(self):
+        return self.GetRange()[1]
 
-  def GetMin(self):
-    return self.GetRange()[0]
-
-  def GetMax(self):
-    return self.GetRange()[1]
-
-  def SetType(self, t):
-    self.data.set_data_dtype(t)
-    print("Data type set to: " + str(t))
+    def SetType(self, t):
+        self.data.set_data_dtype(t)
+        print("Data type set to: " + str(t))
 
 
 def MriVolumeRenderTest():
-
     # We begin by creating the data we want to render.
     # For this tutorial, we create a 3D-image containing three overlaping cubes.
     # This data can of course easily be replaced by data from a medical CT-scan or anything else three dimensional.
     # The only limit is that the data must be reduced to unsigned 8 bit or 16 bit integers.
 
     nifti = NiftiFile()
-    if(home_pc):
+    if (home_pc):
         nifti.ReadFile(os.getcwd() + '\\data\\structural_test.nii')
     else:
         nifti.ReadFile('/stbb_home/jenkinsjc/dev/ColocalizedViewer/Latest/data/structural_test.nii')
 
-    nifti.SetType(np.uint16)
+    nifti.SetType(np.uint8)
+
+    min_val = nifti.GetMin()
+    max_val = nifti.GetMax()
+    spacing = nifti.GetVoxelSize()
+    origin  = nifti.GetOrigin()
+
     img_data = nifti.GetData()
 
-    #img_data = nifti.GetData()
+    # img_data = nifti.GetData()
     img_data_shape = img_data.shape
 
     dataImporter = vtk.vtkImageImport()
     dataImporter.SetDataScalarTypeToUnsignedChar()
+#    dataImporter.SetScalar
     data_string = nifti.ToString()
     dataImporter.SetNumberOfScalarComponents(1)
     dataImporter.CopyImportVoidPointer(data_string, len(data_string))
+
+    dataImporter.SetDataSpacing(spacing[1:4])
+    dataImporter.SetDataOrigin(origin[0:3])
+
     # For some reason we need to invert the img_data_shape indexing (figure out what the strategy is in general)
     dataImporter.SetDataExtent(0, img_data_shape[2] - 1, 0, img_data_shape[1] - 1, 0, img_data_shape[0] - 1)
     dataImporter.SetWholeExtent(0, img_data_shape[2] - 1, 0, img_data_shape[1] - 1, 0, img_data_shape[0] - 1)
     dataImporter.Update()
 
-
-    min_val = nifti.GetMin()
-    max_val = nifti.GetMax()
-
-
     # The following class is used to store transparencyv-values for later retrival. In our case, we want the value 0 to be
     # completly opaque whereas the three different cubes are given different transperancy-values to show how it works.
     alphaChannelFunc = vtk.vtkPiecewiseFunction()
-    alphaChannelFunc.AddPoint(0, 0.0)
-    alphaChannelFunc.AddPoint(min_val+1, 0.05)
-    alphaChannelFunc.AddPoint(max_val/16, 0.1)
-    alphaChannelFunc.AddPoint(max_val/8, 0.3)
-    alphaChannelFunc.AddPoint(max_val/4, 0.5)
-
-    # This class stores color data and can create color tables from a few color points. For this demo, we want the three cubes
-    # to be of the colors red green and blue.
-    #colorFunc = vtk.vtkColorTransferFunction()
-    #colorFunc.AddRGBPoint(400, 0.0, 1.0, 0.0)
-    #colorFunc.AddRGBPoint(100, 0.0, 1.0, 0.0)
-    #colorFunc.AddRGBPoint(150, 0.0, 0.0, 1.0)
-
-
+    alphaChannelFunc.AddPoint(0, 0.0)  # 0
+    alphaChannelFunc.AddPoint(min_val + 1, 0.05)  # .05
+    alphaChannelFunc.AddPoint(max_val / 16, 0.1)  # .1
+    alphaChannelFunc.AddPoint(max_val / 8, 0.3)  # .3
+    alphaChannelFunc.AddPoint(max_val / 4, 0.5)  # .5
 
     print("Min -> " + str(min_val))
     print("Max -> " + str(max_val))
@@ -1034,14 +1024,15 @@ def MriVolumeRenderTest():
 
     xferFunc = vtk.vtkPiecewiseFunction()
     xferFunc.AddPoint(widget_map['min_lut_value'], 0.0)
-    xferFunc.AddPoint(widget_map['max_lut_value'], 1000)
+    xferFunc.AddPoint(widget_map['max_lut_value'], 500)
     # The preavius two classes stored properties. Because we want to apply these properties to the volume we want to render,
     # we have to store them in a class that stores volume prpoperties.
 
     widget_map['mri_volume_property'] = vtk.vtkVolumeProperty()
-    #volumeProperty = vtk.vtkVolumeProperty()
+    # volumeProperty = vtk.vtkVolumeProperty()
     widget_map['mri_volume_property'].SetColor(xferFunc)
     widget_map['mri_volume_property'].SetScalarOpacity(alphaChannelFunc)
+    #widget_map['mri_volume_property'].ShadeOn()        #not sure what this does
 
     # This class describes how the volume is rendered (through ray tracing).
     compositeFunction = vtk.vtkVolumeRayCastCompositeFunction()
@@ -1049,6 +1040,8 @@ def MriVolumeRenderTest():
     volumeMapper = vtk.vtkVolumeRayCastMapper()
     volumeMapper.SetVolumeRayCastFunction(compositeFunction)
     volumeMapper.SetInputConnection(dataImporter.GetOutputPort())
+
+    # volumeMapper.SetMaximumImageSampleDistance(0.01)
 
     # The class vtkVolume is used to pair the preaviusly declared volume as well as the properties to be used when rendering that volume.
     volume = vtk.vtkVolume()
@@ -1087,14 +1080,11 @@ def QVTKRenderWidgetMain():
 
     # load tiff file
     tiffFile = vtk.vtkTIFFReader()
-    if(home_pc):
+    if (home_pc):
         #   much nicer now that we are doing it with anaconda... doesnt require us to put a path relative to python
         tiffFile.SetFileName(os.getcwd() + '\\data\\76.tif')
     else:
         tiffFile.SetFileName('/stbb_home/jenkinsjc/Desktop/LandmarkTesting/76.tif');
-
-
-
 
     # make a texture out of the tiff file
     tex = vtk.vtkTexture()
@@ -1121,22 +1111,22 @@ def QVTKRenderWidgetMain():
     widget_map['vtk_widget'].SetParentActor(widget_map['plane_actor'])
 
     main_frame = Frame('v', [
-            Label('Landmark Points', 'lps'),
-            List([],'landmark_list'),
-            Button('Reset rotation', widget_map['button_controller'].ResetRotation, 'reset_rotation_button'),
-            Label('Theta: 0', 'x_slider_label'),Slider('h', -180, 180, 1, 'x_rot_slider','x_slider_label'),
-            Label('Phi:   0', 'y_slider_label'),Slider('h', -180, 180, 1, 'y_rot_slider','y_slider_label'),
-            Label('Rho:   0', 'z_slider_label'),Slider('h', -180, 180, 1, 'z_rot_slider','z_slider_label'),
-            Button('Reset LUT', widget_map['button_controller'].ResetLUT, 'reset_lut_button'),
-            Label('Min: 0'  , 'min_lut_label'), Slider('h', 0, 1000000, 0, 'min_lut_slider', 'min_lut_label'),
-            Label('Max: 500', 'max_lut_label'), Slider('h', 0, 1000000, 500, 'max_lut_slider', 'max_lut_label'),
+        Label('Landmark Points', 'lps'),
+        List([], 'landmark_list'),
+        Button('Reset rotation', widget_map['button_controller'].ResetRotation, 'reset_rotation_button'),
+        Label('Theta: 0', 'x_slider_label'), Slider('h', -180, 180, 1, 'x_rot_slider', 'x_slider_label'),
+        Label('Phi:   0', 'y_slider_label'), Slider('h', -180, 180, 1, 'y_rot_slider', 'y_slider_label'),
+        Label('Rho:   0', 'z_slider_label'), Slider('h', -180, 180, 1, 'z_rot_slider', 'z_slider_label'),
+        Button('Reset LUT', widget_map['button_controller'].ResetLUT, 'reset_lut_button'),
+        Label('Min: 0', 'min_lut_label'), Slider('h', 0, 10000, 0, 'min_lut_slider', 'min_lut_label'),
+        Label('Max: 500', 'max_lut_label'), Slider('h', 0, 10000, 500, 'max_lut_slider', 'max_lut_label'),
     ])
 
     w = QtWidgets.QWidget()
 
     w.setLayout(HBox([
-            main_frame,
-            widget_map['vtk_widget']
+        main_frame,
+        widget_map['vtk_widget']
     ]))
     w.show()
 
