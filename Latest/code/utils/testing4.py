@@ -13,6 +13,9 @@ import numpy as np
 
 import nibabel as nib
 
+
+#from scipy import ndimage
+
 #from widgets import *
 
 
@@ -100,6 +103,8 @@ class UiUtils(object):
         #widget_map['plane_widget'].SetCenter(rows*pixel_size, cols*pixel_size, 0.0)
         #widget_map['plane_widget'].SetXResolution(int(1 ))
         #widget_map['plane_widget'].SetYResolution(int(1 ))
+
+        #widget_map['plane_widget'].SetCenter(widget_map['mri_com'])
 
         widget_map['plane_widget'].Update()
 
@@ -1358,6 +1363,27 @@ def MriVolumeRenderTest():
 
     # img_data = nifti.GetData()
     img_data_shape = img_data.shape
+
+    numpyVol = np.array(img_data)
+
+    new_vol_arr = []
+
+    #   works
+    for i in range(0, img_data_shape[2]-1):
+        for j in range(0, img_data_shape[1]-1):
+            for k in range(0, img_data_shape[0]-1):
+
+                new_vol_arr.append([k,j,i, img_data[k,j,i]])
+
+
+    nva = np.array(new_vol_arr)
+
+
+    nonZeroMasses = nva[np.nonzero( nva[:, 3])]
+
+    CM = np.average(nonZeroMasses[:, :3], axis=0, weights=nonZeroMasses[:, 3])
+
+    print("CENTER OF MAZZ ->  " + str(CM))
 
     dataImporter = vtk.vtkImageImport()
     dataImporter.SetDataScalarTypeToUnsignedShort()
