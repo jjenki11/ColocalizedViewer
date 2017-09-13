@@ -98,8 +98,6 @@ class UiUtils(object):
         widget_map['plane_widget'].SetPoint2(0.0, rows*pixel_size, 0.0)
 
         #widget_map['plane_widget'].SetCenter(rows*pixel_size, cols*pixel_size, 0.0)
-
-
         #widget_map['plane_widget'].SetXResolution(int(1 ))
         #widget_map['plane_widget'].SetYResolution(int(1 ))
 
@@ -108,8 +106,6 @@ class UiUtils(object):
 
         #print("Position OF plane -> " + str(widget_map['plane_widget'].GetPosition()))
         print("Center OF plane -> " + str(widget_map['plane_widget'].GetCenter()))
-
-        center = mri_center
 
         # make a texture out of the tiff file
         tex = vtk.vtkTexture()
@@ -203,6 +199,15 @@ class Matrix(object):
         self.rz = itk.Matrix.D44()
         self.rz.SetIdentity()
 
+        self.sx = itk.Matrix.D44()
+        self.sx.SetIdentity()
+
+        self.sy = itk.Matrix.D44()
+        self.sy.SetIdentity()
+
+        self.sz = itk.Matrix.D44()
+        self.sz.SetIdentity()
+
     def Get(self):
         return self.m.GetVnlMatrix()
 
@@ -223,6 +228,15 @@ class Matrix(object):
 
     def GetRz(self):
         return self.rz
+
+    def GetSx(self):
+        return self.sx
+
+    def GetSy(self):
+        return self.sy
+
+    def GetSz(self):
+        return self.sz
 
     def Print(self):
         m = self.Get()
@@ -288,9 +302,23 @@ class Matrix(object):
         self.tz.GetVnlMatrix().set(2, 3, trans)
         self.Update()
 
+    def ScaleX(self, scl):
+        self.tx.GetVnlMatrix().set(0, 0, scl)
+        self.Update()
+
+    def ScaleY(self, scl):
+        self.ty.GetVnlMatrix().set(1, 1, scl)
+        self.Update()
+
+    def ScaleZ(self, scl):
+        self.tz.GetVnlMatrix().set(2, 2, scl)
+        self.Update()
+
 
     def Update(self):
-        self.m = (self.GetTz() * self.GetTy() * self.GetTx()) * (self.GetRz() * self.GetRy() * self.GetRx())
+        self.m = (self.GetTz() * self.GetTy() * self.GetTx()) \
+               * (self.GetRz() * self.GetRy() * self.GetRx()) \
+               * (self.GetSz() * self.GetSy() * self.GetSx())
 
     # be careful about transposing between itk and vtk matrix type
     def ToVtkTransform(self):
@@ -441,6 +469,25 @@ class Slider(QtWidgets.QSlider):
 
     def changeValue(self, value):
         print(str(self.disp_label.GetName()))
+
+        if (self.disp_label.GetName() == 'sx_slider_label'):
+            self.disp_label.SetText("sX: " + str(value))
+            widget_map['model_matrix'].ScaleX(value)
+            widget_map['model_matrix'].Update()
+            widget_map['model_matrix'].Print(widget_map['model_matrix'].Get())
+        if (self.disp_label.GetName() == 'sy_slider_label'):
+            self.disp_label.SetText("sY: " + str(value))
+            widget_map['model_matrix'].ScaleY(value)
+            widget_map['model_matrix'].Update()
+            widget_map['model_matrix'].Print(widget_map['model_matrix'].Get())
+        if (self.disp_label.GetName() == 'sz_slider_label'):
+            self.disp_label.SetText("sZ: " + str(value))
+            widget_map['model_matrix'].ScaleZ(value)
+            widget_map['model_matrix'].Update()
+            widget_map['model_matrix'].Print(widget_map['model_matrix'].Get())
+
+
+
         if (self.disp_label.GetName() == 'theta_slider_label'):
             self.disp_label.SetText("Theta: " + str(value))
             widget_map['model_matrix'].RotateX(math.radians(value))
@@ -456,6 +503,7 @@ class Slider(QtWidgets.QSlider):
             widget_map['model_matrix'].RotateZ(math.radians(value))
             widget_map['model_matrix'].Update()
             widget_map['model_matrix'].Print(widget_map['model_matrix'].Get())
+
         if (self.disp_label.GetName() == 'x_slider_label'):
             self.disp_label.SetText("X: " + str(value))
             widget_map['model_matrix'].TranslateX(value)
@@ -723,6 +771,11 @@ class LandmarkSet(object):
 class ButtonController(object):
     def __init__(self):
         print("Created button controller")
+
+    def ResetScale(self):
+        widget_map['x_scale_slider'].setValue(1)
+        widget_map['y_scale_slider'].setValue(1)
+        widget_map['z_scale_slider'].setValue(1)
 
     def ResetRotation(self):
         widget_map['theta_rot_slider'].setValue(0)
@@ -1373,16 +1426,19 @@ def QVTKRenderWidgetMain():
 
     widget_map['vtk_widget'].SetRenderer(widget_map['v_ren'])
 
-
-
-
-
     #   this is the setup window where we input our mri and slice files.
     widget_map['setup_window'] = MainWindow()
 
     widget_map['vtk_options_frame'] = Frame('v', [
                 Label('Landmark Points', 'lps'),
                 List([], 'landmark_list'),
+
+                Button('Reset scale', widget_map['button_controller'].ResetScale, 'reset_scale_button'),
+                Label('sX:   0', 'sx_slider_label'), Slider('h', 0.00001, 10, 1, 'x_scale_slider', 'sx_slider_label'),
+                Label('sY:   0', 'sy_slider_label'), Slider('h', 0.00001, 10, 1, 'y_scale_slider', 'sy_slider_label'),
+                Label('sZ:   0', 'sz_slider_label'), Slider('h', 0.00001, 10, 1, 'z_scale_slider', 'sz_slider_label'),
+
+
                 Button('Reset rotation', widget_map['button_controller'].ResetRotation, 'reset_rotation_button'),
                 Label('Theta: 0', 'theta_slider_label'), Slider('h', -180, 180, 1, 'theta_rot_slider', 'theta_slider_label'),
                 Label('Phi:   0', 'phi_slider_label'), Slider('h', -180, 180, 1, 'phi_rot_slider', 'phi_slider_label'),
