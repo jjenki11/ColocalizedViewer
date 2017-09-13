@@ -1221,6 +1221,7 @@ def MriVolumeRenderTest():
     # The only limit is that the data must be reduced to unsigned 8 bit or 16 bit integers.
 
     widget_map['mri_nifti_ptr'] = NiftiFile()
+
     if (home_pc):
         widget_map['mri_nifti_ptr'].ReadFile(os.getcwd() + '\\data\\structural_test.nii')
 
@@ -1312,14 +1313,9 @@ class OkPopup(QtWidgets.QMessageBox):
     def __init__(self, to_hide, to_show):
         super(OkPopup, self).__init__()
         self.InitUi(to_hide, to_show)
-        #self.exec_()
         self.show()
 
     def InitUi(self, hide, show):
-        #self.setText()
-        #self.setInformativeText('Are all of these values correct?')
-        #self.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
-        #self.setDefaultButton(QtWidgets.QMessageBox.Yes)
         buttonReply = QtWidgets.QMessageBox.question(self, 'Check your values', self.FormatText(), QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
         if buttonReply == QtWidgets.QMessageBox.Yes:
             print('Yes clicked.')
@@ -1328,21 +1324,14 @@ class OkPopup(QtWidgets.QMessageBox):
             g_utils.SetupMriActor()
             g_utils.SetupHistologyActor()
 
-
-
             ShowWidgets(show)
             HideWidgets(hide)
 
         else:
             print('No clicked.')
             self.hide()
-            #widget_map[to_show].hide()
 
-
-
-
-        # Formats text in the relevant widgets and displays in a popup message
-
+    # Formats text in the relevant widgets and displays in a popup message
     def FormatText(self):
         labels = ["MRI Voxel dimension: ", "MRI Voxel size: ", "Histology Voxel dimension: ", "Histology Voxel size: ",
                   "Number of Histology Image Levels: "]
@@ -1433,11 +1422,11 @@ def QVTKRenderWidgetMain():
                 Label('Landmark Points', 'lps'),
                 List([], 'landmark_list'),
 
+
                 Button('Reset scale', widget_map['button_controller'].ResetScale, 'reset_scale_button'),
                 Label('sX:   0', 'sx_slider_label'), Slider('h', 0.00001, 10, 1, 'x_scale_slider', 'sx_slider_label'),
                 Label('sY:   0', 'sy_slider_label'), Slider('h', 0.00001, 10, 1, 'y_scale_slider', 'sy_slider_label'),
                 Label('sZ:   0', 'sz_slider_label'), Slider('h', 0.00001, 10, 1, 'z_scale_slider', 'sz_slider_label'),
-
 
                 Button('Reset rotation', widget_map['button_controller'].ResetRotation, 'reset_rotation_button'),
                 Label('Theta: 0', 'theta_slider_label'), Slider('h', -180, 180, 1, 'theta_rot_slider', 'theta_slider_label'),
@@ -1448,6 +1437,7 @@ def QVTKRenderWidgetMain():
                 Label('X: 0', 'x_slider_label'), Slider('h', -180, 180, 1, 'x_trans_slider', 'x_slider_label'),
                 Label('Y:   0', 'y_slider_label'), Slider('h', -180, 180, 1, 'y_trans_slider', 'y_slider_label'),
                 Label('Z:   0', 'z_slider_label'), Slider('h', -180, 180, 1, 'z_trans_slider', 'z_slider_label'),
+
 
                 Button('Reset LUT', widget_map['button_controller'].ResetLUT, 'reset_lut_button'),
                 Label('Min: 0', 'min_lut_label'), Slider('h', 0, 1000000, 9000, 'min_lut_slider', 'min_lut_label'),
