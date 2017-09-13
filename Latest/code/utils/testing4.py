@@ -166,17 +166,129 @@ def HideWidgets(w_list):
     for w in w_list:
         widget_map[w].hide()
 
-
 def l2n(l):
     return lambda l: np.array(l)
-
 
 def n2l(n):
     return lambda n: list(n)
 
+# Subclassed itk matrix 3x3
+class CoordinateFrame(object):
+    def __init__(self):
+        self.m = itk.Matrix.D31()
+        self.m.SetIdentity()
 
-# Subclassed itk matrix
-class Matrix(object):
+        self.spacing = itk.Matrix.D33()
+        self.spacing.SetIdentity()
+
+        self.direction = itk.Matrix.D33()
+        self.direction.SetIdentity()
+
+        self.index = itk.Matrix.D31()
+        self.index.SetIdentity()
+
+        self.origin = itk.Matrix.D31()
+        self.origin.SetIdentity()
+
+
+    def Get(self):
+        return self.m.GetVnlMatrix()
+
+
+    def Print(self):
+        m = self.Get()
+        r1 = str(m.get(0, 0))
+        r2 = str(m.get(1, 0))
+        r3 = str(m.get(2, 0))
+
+        print(r1)
+        print(r2)
+        print(r3)
+
+        #self.Update()
+
+    def Print(self, m):
+        mat = None
+        if (m):
+            mat = self.Get()
+        else:
+            mat = m.GetVnlMatrix()
+
+        r1 = str(mat.get(0, 0))
+        r2 = str(mat.get(1, 0))
+        r3 = str(mat.get(2, 0))
+
+        print("")
+        print(r1)
+        print(r2)
+        print(r3)
+
+        print("")
+        #self.Update()
+
+    def SetSpacing(self, sx, sy, sz):
+        self.spacing.GetVnlMatrix().set(0, 0, sx)
+        self.spacing.GetVnlMatrix().set(1, 1, sy)
+        self.spacing.GetVnlMatrix().set(2, 2, sz)
+
+
+    def SetIndex(self, ix, iy, iz):
+        self.index.GetVnlMatrix().set(0, 0, ix)
+        self.index.GetVnlMatrix().set(1, 0, iy)
+        self.index.GetVnlMatrix().set(2, 0, iz)
+        #self.Update()
+
+    def SetDirection(self, dmat):
+        pass
+
+    def SetOrigin(self, ox, oy, oz):
+        self.origin.GetVnlMatrix().set(0, 0, ox)
+        self.origin.GetVnlMatrix().set(1, 0, oy)
+        self.origin.GetVnlMatrix().set(2, 0, oz)
+
+
+    def GetPhysicalCoordinate(self):
+        self.m = (self.direction * self.spacing * self.index) + self.origin
+        return self.m
+
+
+#    def Update(self):
+#        self.m = (self.GetTz() * self.GetTy() * self.GetTx()) \
+#               * (self.GetRz() * self.GetRy() * self.GetRx()) \
+#               * (self.GetSz() * self.GetSy() * self.GetSx())
+
+    # be careful about transposing between itk and vtk matrix type
+    def ToVtkTransform(self):
+        mat = vtk.vtkMatrix4x4()
+        m = self.Get()
+        mat.SetElement(0, 0, m.get(0, 0))
+        mat.SetElement(0, 1, m.get(0, 1))
+        mat.SetElement(0, 2, m.get(0, 2))
+        mat.SetElement(0, 3, m.get(0, 3))
+
+        mat.SetElement(1, 0, m.get(1, 0))
+        mat.SetElement(1, 1, m.get(1, 1))
+        mat.SetElement(1, 2, m.get(1, 2))
+        mat.SetElement(1, 3, m.get(1, 3))
+
+        mat.SetElement(2, 0, m.get(2, 0))
+        mat.SetElement(2, 1, m.get(2, 1))
+        mat.SetElement(2, 2, m.get(2, 2))
+        mat.SetElement(2, 3, m.get(2, 3))
+
+        mat.SetElement(3, 0, m.get(3, 0))
+        mat.SetElement(3, 1, m.get(3, 1))
+        mat.SetElement(3, 2, m.get(3, 2))
+        mat.SetElement(3, 3, m.get(3, 3))
+        vmat = vtk.vtkTransform()
+        vmat.Identity()
+        vmat.SetMatrix(mat)
+        vmat.Update()
+        return vmat
+
+
+# Subclassed itk matrix 4x4
+class Matrix4(object):
     def __init__(self):
         self.m = itk.Matrix.D44()
         self.m.SetIdentity()
@@ -1237,6 +1349,10 @@ def MriVolumeRenderTest():
     max_val = widget_map['mri_nifti_ptr'].GetMax()
     spacing = widget_map['mri_nifti_ptr'].GetVoxelSize()
     origin  = widget_map['mri_nifti_ptr'].GetOrigin()
+    #direction = widget_map['mri_nifti_ptr'].GetDirection()
+
+
+
 
     img_data = widget_map['mri_nifti_ptr'].GetData()
 
@@ -1251,7 +1367,16 @@ def MriVolumeRenderTest():
     dataImporter.CopyImportVoidPointer(data_string, len(data_string))
 
     dataImporter.SetDataSpacing(spacing[1:4])
-    dataImporter.SetDataOrigin(origin[0:3])
+
+    #   TBD fix the coordinateframe matrix
+
+    #img2phys = CoordinateFrame()
+    #img2phys.SetOrigin(origin[0:3])
+    #img2phys.SetSpacing(spacing[1:4])
+    #img2phys.SetIndex()
+
+
+    #dataImporter.SetDataOrigin(origin[0:3])
 
     # For some reason we need to invert the img_data_shape indexing (figure out what the strategy is in general)
     dataImporter.SetDataExtent(0, img_data_shape[2] - 1, 0, img_data_shape[1] - 1, 0, img_data_shape[0] - 1)
@@ -1396,7 +1521,7 @@ def QVTKRenderWidgetMain():
     widget_map['main_application'] = QtWidgets.QApplication(['QVTKRenderWindowInteractor'])
     widget_map['root_window'] = QtWidgets.QWidget()
 
-    widget_map['model_matrix'] = Matrix()
+    widget_map['model_matrix'] = Matrix4()
 
     widget_map['landmark_actors'] = []
 
