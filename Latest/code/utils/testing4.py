@@ -73,6 +73,44 @@ class UiUtils(object):
         else:
             tiffFile.SetFileName('/stbb_home/jenkinsjc/Desktop/LandmarkTesting/76.tif');
 
+        tiffFile.Update()
+
+        min_val = widget_map['mri_nifti_ptr'].GetMin()
+        max_val = widget_map['mri_nifti_ptr'].GetMax()
+        spacing = widget_map['mri_nifti_ptr'].GetVoxelSize()
+        origin = widget_map['mri_nifti_ptr'].GetOrigin()
+
+        mri_center = widget_map['mri_actor'].GetCenter()
+
+        pixel_size = .1
+        tiff_dims = tiffFile.GetOutput().GetExtent()
+
+        print(str(tiff_dims))
+
+        cols = tiff_dims[1] + 1
+        rows = tiff_dims[3] + 1
+
+        print("ROWS -> " + str(rows))
+        print("COLS -> " + str(cols))
+
+
+        widget_map['plane_widget'].SetPoint1(cols*pixel_size, 0.0, 0.0)
+        widget_map['plane_widget'].SetPoint2(0.0, rows*pixel_size, 0.0)
+
+        #widget_map['plane_widget'].SetCenter(rows*pixel_size, cols*pixel_size, 0.0)
+
+
+        #widget_map['plane_widget'].SetXResolution(int(1 ))
+        #widget_map['plane_widget'].SetYResolution(int(1 ))
+
+        widget_map['plane_widget'].Update()
+
+
+        #print("Position OF plane -> " + str(widget_map['plane_widget'].GetPosition()))
+        print("Center OF plane -> " + str(widget_map['plane_widget'].GetCenter()))
+
+        center = mri_center
+
         # make a texture out of the tiff file
         tex = vtk.vtkTexture()
         tex.SetInputConnection(tiffFile.GetOutputPort())
@@ -89,6 +127,10 @@ class UiUtils(object):
         widget_map['plane_actor'] = vtk.vtkActor()
         widget_map['plane_actor'].SetMapper(mapper)
         widget_map['plane_actor'].SetTexture(tex)
+
+        #widget_map['plane_actor'].SetOrigin(center[0], center[1], center[2])
+
+
         widget_map['vtk_widget'].SetParentActor(widget_map['plane_actor'])
         widget_map['v_ren'].AddActor(widget_map['plane_actor'])
 
@@ -233,6 +275,19 @@ class Matrix(object):
         self.rz.GetVnlMatrix().set(1, 0, math.sin(rot))
         self.rz.GetVnlMatrix().set(1, 1, math.cos(rot))
         self.Update()
+
+    def TranslateX(self, trans):
+        self.tx.GetVnlMatrix().set(0, 3, trans)
+        self.Update()
+
+    def TranslateY(self, trans):
+        self.ty.GetVnlMatrix().set(1, 3, trans)
+        self.Update()
+
+    def TranslateZ(self, trans):
+        self.tz.GetVnlMatrix().set(2, 3, trans)
+        self.Update()
+
 
     def Update(self):
         self.m = (self.GetTz() * self.GetTy() * self.GetTx()) * (self.GetRz() * self.GetRy() * self.GetRx())
@@ -386,21 +441,39 @@ class Slider(QtWidgets.QSlider):
 
     def changeValue(self, value):
         print(str(self.disp_label.GetName()))
-        if (self.disp_label.GetName() == 'x_slider_label'):
+        if (self.disp_label.GetName() == 'theta_slider_label'):
             self.disp_label.SetText("Theta: " + str(value))
             widget_map['model_matrix'].RotateX(math.radians(value))
             widget_map['model_matrix'].Update()
             widget_map['model_matrix'].Print(widget_map['model_matrix'].Get())
-        if (self.disp_label.GetName() == 'y_slider_label'):
+        if (self.disp_label.GetName() == 'phi_slider_label'):
             self.disp_label.SetText("Phi: " + str(value))
             widget_map['model_matrix'].RotateY(math.radians(value))
             widget_map['model_matrix'].Update()
             widget_map['model_matrix'].Print(widget_map['model_matrix'].Get())
-        if (self.disp_label.GetName() == 'z_slider_label'):
+        if (self.disp_label.GetName() == 'rho_slider_label'):
             self.disp_label.SetText("Rho: " + str(value))
             widget_map['model_matrix'].RotateZ(math.radians(value))
             widget_map['model_matrix'].Update()
             widget_map['model_matrix'].Print(widget_map['model_matrix'].Get())
+        if (self.disp_label.GetName() == 'x_slider_label'):
+            self.disp_label.SetText("X: " + str(value))
+            widget_map['model_matrix'].TranslateX(value)
+            widget_map['model_matrix'].Update()
+            widget_map['model_matrix'].Print(widget_map['model_matrix'].Get())
+        if (self.disp_label.GetName() == 'y_slider_label'):
+            self.disp_label.SetText("Y: " + str(value))
+            widget_map['model_matrix'].TranslateY(value)
+            widget_map['model_matrix'].Update()
+            widget_map['model_matrix'].Print(widget_map['model_matrix'].Get())
+        if (self.disp_label.GetName() == 'z_slider_label'):
+            self.disp_label.SetText("Z: " + str(value))
+            widget_map['model_matrix'].TranslateZ(value)
+            widget_map['model_matrix'].Update()
+            widget_map['model_matrix'].Print(widget_map['model_matrix'].Get())
+
+
+
 
         if (self.disp_label.GetName() == 'min_lut_label'):
             self.disp_label.SetText("Min: " + str(value))
@@ -418,7 +491,7 @@ class Slider(QtWidgets.QSlider):
 
         #   apply transformation
         transformation = widget_map['model_matrix'].ToVtkTransform()
-        widget_map['plane_actor'].SetUserTransform(transformation)
+        widget_map['mri_actor'].SetUserTransform(transformation)
         widget_map['landmark_list'].Reset()
 
         for la in widget_map['landmark_actors']:
@@ -652,9 +725,14 @@ class ButtonController(object):
         print("Created button controller")
 
     def ResetRotation(self):
-        widget_map['x_rot_slider'].setValue(0)
-        widget_map['y_rot_slider'].setValue(0)
-        widget_map['z_rot_slider'].setValue(0)
+        widget_map['theta_rot_slider'].setValue(0)
+        widget_map['phi_rot_slider'].setValue(0)
+        widget_map['rho_rot_slider'].setValue(0)
+
+    def ResetTranslation(self):
+        widget_map['x_trans_slider'].setValue(0)
+        widget_map['y_trans_slider'].setValue(0)
+        widget_map['z_trans_slider'].setValue(0)
 
     def ResetLUT(self):
         widget_map['min_lut_slider'].setValue(default_min_lut)
@@ -1089,32 +1167,32 @@ def MriVolumeRenderTest():
     # This data can of course easily be replaced by data from a medical CT-scan or anything else three dimensional.
     # The only limit is that the data must be reduced to unsigned 8 bit or 16 bit integers.
 
-    nifti = NiftiFile()
+    widget_map['mri_nifti_ptr'] = NiftiFile()
     if (home_pc):
-        nifti.ReadFile(os.getcwd() + '\\data\\structural_test.nii')
+        widget_map['mri_nifti_ptr'].ReadFile(os.getcwd() + '\\data\\structural_test.nii')
 
     elif(from_gui):
-        nifti.ReadFile(widget_map['mri_file'].GetText())
+        widget_map['mri_nifti_ptr'].ReadFile(widget_map['mri_file'].GetText())
 
     else:
-        nifti.ReadFile('/stbb_home/jenkinsjc/dev/ColocalizedViewer/Latest/data/structural_test.nii')
+        widget_map['mri_nifti_ptr'].ReadFile('/stbb_home/jenkinsjc/dev/ColocalizedViewer/Latest/data/structural_test.nii')
 
-    nifti.SetType(np.uint8)
+    widget_map['mri_nifti_ptr'].SetType(np.uint8)
 
-    min_val = nifti.GetMin()
-    max_val = nifti.GetMax()
-    spacing = nifti.GetVoxelSize()
-    origin  = nifti.GetOrigin()
+    min_val = widget_map['mri_nifti_ptr'].GetMin()
+    max_val = widget_map['mri_nifti_ptr'].GetMax()
+    spacing = widget_map['mri_nifti_ptr'].GetVoxelSize()
+    origin  = widget_map['mri_nifti_ptr'].GetOrigin()
 
-    img_data = nifti.GetData()
+    img_data = widget_map['mri_nifti_ptr'].GetData()
 
     # img_data = nifti.GetData()
     img_data_shape = img_data.shape
 
     dataImporter = vtk.vtkImageImport()
-    dataImporter.SetDataScalarTypeToUnsignedChar()
+    dataImporter.SetDataScalarTypeToUnsignedShort()
 #    dataImporter.SetScalar
-    data_string = nifti.ToString()
+    data_string = widget_map['mri_nifti_ptr'].ToString()
     dataImporter.SetNumberOfScalarComponents(1)
     dataImporter.CopyImportVoidPointer(data_string, len(data_string))
 
@@ -1133,7 +1211,7 @@ def MriVolumeRenderTest():
     alphaChannelFunc.AddPoint(min_val + 1, 0.05)  # .05
     alphaChannelFunc.AddPoint(max_val / 16, 0.1)  # .1
     alphaChannelFunc.AddPoint(max_val / 8, 0.3)  # .3
-    alphaChannelFunc.AddPoint(max_val / 4, 0.5)  # .5
+    alphaChannelFunc.AddPoint(max_val / 2, 0.5)  # .5
 
     print("Min -> " + str(min_val))
     print("Max -> " + str(max_val))
@@ -1143,7 +1221,7 @@ def MriVolumeRenderTest():
 
     xferFunc = vtk.vtkPiecewiseFunction()
     xferFunc.AddPoint(widget_map['min_lut_value'], 0.0)
-    xferFunc.AddPoint(widget_map['max_lut_value'], 500)
+    xferFunc.AddPoint(widget_map['max_lut_value'], 10000)
     # The preavius two classes stored properties. Because we want to apply these properties to the volume we want to render,
     # we have to store them in a class that stores volume prpoperties.
 
@@ -1167,7 +1245,9 @@ def MriVolumeRenderTest():
     volume.SetMapper(volumeMapper)
     volume.SetProperty(widget_map['mri_volume_property'])
 
-    return volume
+    widget_map['mri_actor'] = volume
+
+    return widget_map['mri_actor']
 
 
 
@@ -1192,8 +1272,9 @@ class OkPopup(QtWidgets.QMessageBox):
             print('Yes clicked.')
             self.hide()
 
-            g_utils.SetupHistologyActor()
             g_utils.SetupMriActor()
+            g_utils.SetupHistologyActor()
+
 
 
             ShowWidgets(show)
@@ -1303,12 +1384,18 @@ def QVTKRenderWidgetMain():
                 Label('Landmark Points', 'lps'),
                 List([], 'landmark_list'),
                 Button('Reset rotation', widget_map['button_controller'].ResetRotation, 'reset_rotation_button'),
-                Label('Theta: 0', 'x_slider_label'), Slider('h', -180, 180, 1, 'x_rot_slider', 'x_slider_label'),
-                Label('Phi:   0', 'y_slider_label'), Slider('h', -180, 180, 1, 'y_rot_slider', 'y_slider_label'),
-                Label('Rho:   0', 'z_slider_label'), Slider('h', -180, 180, 1, 'z_rot_slider', 'z_slider_label'),
+                Label('Theta: 0', 'theta_slider_label'), Slider('h', -180, 180, 1, 'theta_rot_slider', 'theta_slider_label'),
+                Label('Phi:   0', 'phi_slider_label'), Slider('h', -180, 180, 1, 'phi_rot_slider', 'phi_slider_label'),
+                Label('Rho:   0', 'rho_slider_label'), Slider('h', -180, 180, 1, 'rho_rot_slider', 'rho_slider_label'),
+
+                Button('Reset translation', widget_map['button_controller'].ResetTranslation, 'reset_translation_button'),
+                Label('X: 0', 'x_slider_label'), Slider('h', -180, 180, 1, 'x_trans_slider', 'x_slider_label'),
+                Label('Y:   0', 'y_slider_label'), Slider('h', -180, 180, 1, 'y_trans_slider', 'y_slider_label'),
+                Label('Z:   0', 'z_slider_label'), Slider('h', -180, 180, 1, 'z_trans_slider', 'z_slider_label'),
+
                 Button('Reset LUT', widget_map['button_controller'].ResetLUT, 'reset_lut_button'),
-                Label('Min: 0', 'min_lut_label'), Slider('h', 0, 10000, 0, 'min_lut_slider', 'min_lut_label'),
-                Label('Max: 500', 'max_lut_label'), Slider('h', 0, 10000, 500, 'max_lut_slider', 'max_lut_label'),
+                Label('Min: 0', 'min_lut_label'), Slider('h', 0, 1000000, 9000, 'min_lut_slider', 'min_lut_label'),
+                Label('Max: 500', 'max_lut_label'), Slider('h', 0, 1000000, 1000000, 'max_lut_slider', 'max_lut_label'),
             ])
     #widget_map['vtk_widget_frame'] = Frame('v',[]) #None #QtWidgets.QWidget([])
     #widget_map['vtk_widget_frame'] = VBox([])
