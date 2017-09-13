@@ -180,8 +180,13 @@ def n2l(n):
 # Subclassed itk matrix 3x3
 class CoordinateFrame(object):
     def __init__(self):
-        self.m = itk.Matrix.D31()
-        self.m.SetIdentity()
+
+        Dimension = 3
+        ComponentType = itk.F
+        self.VectorType = itk.Vector[ComponentType, Dimension]
+
+        self.m = itk.Vector[ComponentType, Dimension]()
+        #self.m.SetIdentity()
 
         self.spacing = itk.Matrix.D33()
         self.spacing.SetIdentity()
@@ -189,11 +194,11 @@ class CoordinateFrame(object):
         self.direction = itk.Matrix.D33()
         self.direction.SetIdentity()
 
-        self.index = itk.Matrix.D31()
-        self.index.SetIdentity()
+        self.index = itk.Vector[ComponentType, Dimension]()
+        #self.index.SetIdentity()
 
-        self.origin = itk.Matrix.D31()
-        self.origin.SetIdentity()
+        self.origin = itk.Vector[ComponentType, Dimension]()
+        #self.origin.SetIdentity()
 
 
     def Get(self):
@@ -231,29 +236,46 @@ class CoordinateFrame(object):
         print("")
         #self.Update()
 
-    def SetSpacing(self, sx, sy, sz):
-        self.spacing.GetVnlMatrix().set(0, 0, sx)
-        self.spacing.GetVnlMatrix().set(1, 1, sy)
-        self.spacing.GetVnlMatrix().set(2, 2, sz)
+    def SetSpacing(self, spc):
+        val = self.VectorType()
+        val[0] = float(spc[0])
+        val[1] = float(spc[1])
+        val[2] = float(spc[2])
+        self.spacing = val
 
 
-    def SetIndex(self, ix, iy, iz):
-        self.index.GetVnlMatrix().set(0, 0, ix)
-        self.index.GetVnlMatrix().set(1, 0, iy)
-        self.index.GetVnlMatrix().set(2, 0, iz)
-        #self.Update()
+    def SetIndex(self, idx):
+        val = self.VectorType()
+        val[0] = float(idx[0])
+        val[1] = float(idx[1])
+        val[2] = float(idx[2])
+        self.index = val
 
     def SetDirection(self, dmat):
-        pass
+        #self.direction = dmat
+        self.direction.GetVnlMatrix().set(0, 0, dmat[0][0])
+        self.direction.GetVnlMatrix().set(1, 0, dmat[1][0])
+        self.direction.GetVnlMatrix().set(2, 0, dmat[2][0])
+        self.direction.GetVnlMatrix().set(0, 1, dmat[0][1])
+        self.direction.GetVnlMatrix().set(2, 1, dmat[1][1])
+        self.direction.GetVnlMatrix().set(2, 1, dmat[2][1])
+        self.direction.GetVnlMatrix().set(0, 2, dmat[0][2])
+        self.direction.GetVnlMatrix().set(2, 2, dmat[1][2])
+        self.direction.GetVnlMatrix().set(2, 2, dmat[2][2])
+        print(self.direction)
 
-    def SetOrigin(self, ox, oy, oz):
-        self.origin.GetVnlMatrix().set(0, 0, ox)
-        self.origin.GetVnlMatrix().set(1, 0, oy)
-        self.origin.GetVnlMatrix().set(2, 0, oz)
+
+    def SetOrigin(self, ogn):
+        val = self.VectorType()
+        val[0] = float(ogn[0])
+        val[1] = float(ogn[1])
+        val[2] = float(ogn[2])
+        self.origin = val
 
 
+    #   tbd - float + vector?  both should be vector
     def GetPhysicalCoordinate(self):
-        self.m = (self.direction * self.spacing * self.index) + self.origin
+        self.m = (self.direction * self.spacing) * self.index + self.origin
         return self.m
 
 
@@ -1311,8 +1333,14 @@ class NiftiFile(object):
     def PrintHeader(self):
         print(self.header)
 
+    def GetHeader(self):
+        return self.header
+
     def GetData(self):
         return self.data.get_data()
+
+    def GetShape(self):
+        return self.GetData().shape
 
     def ToString(self):
         return self.GetData().tostring()
@@ -1329,6 +1357,25 @@ class NiftiFile(object):
     def SetType(self, t):
         self.data.set_data_dtype(t)
         print("Data type set to: " + str(t))
+
+    def ComputeCenterOfMass(self):
+
+        img_data = self.GetData()
+        img_data_shape = img_data.shape
+
+        numpyVol = np.array(img_data)
+        new_vol_arr = []
+
+        #   works but is slow
+        for i in range(0, img_data_shape[2] - 1):
+            for j in range(0, img_data_shape[1] - 1):
+                for k in range(0, img_data_shape[0] - 1):
+                    new_vol_arr.append([k, j, i, img_data[k, j, i]])
+
+        nva = np.array(new_vol_arr)
+        nonZeroMasses = nva[np.nonzero(nva[:, 3])]
+        CM = np.average(nonZeroMasses[:, :3], axis=0, weights=nonZeroMasses[:, 3])
+        return [CM[0], CM[1], CM[2]]
 
 
 def MriVolumeRenderTest():
@@ -1348,42 +1395,23 @@ def MriVolumeRenderTest():
     else:
         widget_map['mri_nifti_ptr'].ReadFile('/stbb_home/jenkinsjc/dev/ColocalizedViewer/Latest/data/structural_test.nii')
 
-    widget_map['mri_nifti_ptr'].SetType(np.uint8)
+
+    #   what is the difference between uint8 and uint16 for short?
+    widget_map['mri_nifti_ptr'].SetType(np.uint16)
 
     min_val = widget_map['mri_nifti_ptr'].GetMin()
     max_val = widget_map['mri_nifti_ptr'].GetMax()
     spacing = widget_map['mri_nifti_ptr'].GetVoxelSize()
     origin  = widget_map['mri_nifti_ptr'].GetOrigin()
-    #direction = widget_map['mri_nifti_ptr'].GetDirection()
+
+
+    print(str(widget_map['mri_nifti_ptr'].GetHeader().get_qform()))
 
 
 
-
-    img_data = widget_map['mri_nifti_ptr'].GetData()
-
-    # img_data = nifti.GetData()
-    img_data_shape = img_data.shape
-
-    numpyVol = np.array(img_data)
-
-    new_vol_arr = []
-
-    #   works
-    for i in range(0, img_data_shape[2]-1):
-        for j in range(0, img_data_shape[1]-1):
-            for k in range(0, img_data_shape[0]-1):
-
-                new_vol_arr.append([k,j,i, img_data[k,j,i]])
-
-
-    nva = np.array(new_vol_arr)
-
-
-    nonZeroMasses = nva[np.nonzero( nva[:, 3])]
-
-    CM = np.average(nonZeroMasses[:, :3], axis=0, weights=nonZeroMasses[:, 3])
-
-    print("CENTER OF MAZZ ->  " + str(CM))
+    c_of_mass = widget_map['mri_nifti_ptr'].ComputeCenterOfMass()
+    img_data_shape = widget_map['mri_nifti_ptr'].GetShape()
+    #print("CENTER OF MAZZ ->  " + str(CM))
 
     dataImporter = vtk.vtkImageImport()
     dataImporter.SetDataScalarTypeToUnsignedShort()
@@ -1396,10 +1424,14 @@ def MriVolumeRenderTest():
 
     #   TBD fix the coordinateframe matrix
 
-    #img2phys = CoordinateFrame()
-    #img2phys.SetOrigin(origin[0:3])
-    #img2phys.SetSpacing(spacing[1:4])
-    #img2phys.SetIndex()
+    img2phys = CoordinateFrame()
+    img2phys.SetOrigin([origin[0], origin[1], origin[2]])
+    img2phys.SetSpacing([spacing[1], spacing[2], spacing[3]])
+    img2phys.SetIndex([c_of_mass[0], c_of_mass[1], c_of_mass[2]])
+    img2phys.SetDirection(widget_map['mri_nifti_ptr'].GetHeader().get_qform())
+
+    #   tbd fix this
+    #print(str(img2phys.GetPhysicalCoordinate()))
 
 
     #dataImporter.SetDataOrigin(origin[0:3])
