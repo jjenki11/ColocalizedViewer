@@ -14,6 +14,7 @@ import numpy as np
 import nibabel as nib
 
 #from widgets import *
+from JWidgets import *
 
 
 # class to hold all utility functions
