@@ -76,6 +76,15 @@ class UiUtils(object):
         else:
             tiffFile.SetFileName('/stbb_home/jenkinsjc/Desktop/LandmarkTesting/76.tif');
 
+        """
+        reader.SetDataExtent(self.DataExtent)
+            reader.SetDataSpacing(self.DataSpacing)
+            reader.SetDataOrigin(self.DataOrigin)
+            https://www.programcreek.com/python/example/65415/vtk.vtkTIFFReader
+        """
+
+
+        #tiffFile.DesiredOutputPrecision(SINGLE_PRECISION)
         tiffFile.Update()
 
         min_val = widget_map['mri_nifti_ptr'].GetMin()
@@ -83,7 +92,8 @@ class UiUtils(object):
         spacing = widget_map['mri_nifti_ptr'].GetVoxelSize()
         origin = widget_map['mri_nifti_ptr'].GetOrigin()
 
-        mri_center = widget_map['mri_actor'].GetCenter()
+
+        center = widget_map['mri_actor'].GetCenter()
 
         pixel_size = .1
         tiff_dims = tiffFile.GetOutput().GetExtent()
@@ -129,7 +139,7 @@ class UiUtils(object):
         widget_map['plane_actor'].SetMapper(mapper)
         widget_map['plane_actor'].SetTexture(tex)
 
-        #widget_map['plane_actor'].SetOrigin(center[0], center[1], center[2])
+        widget_map['plane_actor'].SetOrigin(center[0], center[1], center[2])
 
 
         widget_map['vtk_widget'].SetParentActor(widget_map['plane_actor'])
@@ -153,9 +163,9 @@ filebox_width = 150;
 default_min_lut = 0.0;
 default_max_lut = 500.0;
 
-home_pc = True;
+home_pc = False;
 
-from_gui = False;
+from_gui = True;
 
 
 # Register widget by nam e to our global mapping
@@ -1500,6 +1510,7 @@ def MriVolumeRenderTest():
     # volumeProperty = vtk.vtkVolumeProperty()
     widget_map['mri_volume_property'].SetColor(xferFunc)
     widget_map['mri_volume_property'].SetScalarOpacity(alphaChannelFunc)
+    widget_map['mri_volume_property'].SetInterpolationTypeToNearest()
     #widget_map['mri_volume_property'].ShadeOn()        #not sure what this does
 
     # This class describes how the volume is rendered (through ray tracing).
@@ -1655,23 +1666,23 @@ def QVTKRenderWidgetMain():
 
 
                 Button('Reset scale', widget_map['button_controller'].ResetScale, 'reset_scale_button'),
-                Label('sX:   0', 'sx_slider_label'), Slider('v', 0.00001, 10, 1, 'x_scale_slider', 'sx_slider_label'),
-                Label('sY:   0', 'sy_slider_label'), Slider('v', 0.00001, 10, 1, 'y_scale_slider', 'sy_slider_label'),
-                Label('sZ:   0', 'sz_slider_label'), Slider('v', 0.00001, 10, 1, 'z_scale_slider', 'sz_slider_label'),
+                Label('sX:   0', 'sx_slider_label'), Slider('h', 0.00001, 10, 1, 'x_scale_slider', 'sx_slider_label'),
+                Label('sY:   0', 'sy_slider_label'), Slider('h', 0.00001, 10, 1, 'y_scale_slider', 'sy_slider_label'),
+                Label('sZ:   0', 'sz_slider_label'), Slider('h', 0.00001, 10, 1, 'z_scale_slider', 'sz_slider_label'),
 
                 Button('Reset rotation', widget_map['button_controller'].ResetRotation, 'reset_rotation_button'),
-                Label('Theta: 0', 'theta_slider_label'), Slider('v', -180, 180, 1, 'theta_rot_slider', 'theta_slider_label'),
-                Label('Phi:   0', 'phi_slider_label'), Slider('v', -180, 180, 1, 'phi_rot_slider', 'phi_slider_label'),
-                Label('Rho:   0', 'rho_slider_label'), Slider('v', -180, 180, 1, 'rho_rot_slider', 'rho_slider_label'),
+                Label('Theta: 0', 'theta_slider_label'), Slider('h', -180, 180, 1, 'theta_rot_slider', 'theta_slider_label'),
+                Label('Phi:   0', 'phi_slider_label'), Slider('h', -180, 180, 1, 'phi_rot_slider', 'phi_slider_label'),
+                Label('Rho:   0', 'rho_slider_label'), Slider('h', -180, 180, 1, 'rho_rot_slider', 'rho_slider_label'),
 
                 Button('Reset translation', widget_map['button_controller'].ResetTranslation, 'reset_translation_button'),
-                Label('X: 0', 'x_slider_label'), Slider('v', -180, 180, 1, 'x_trans_slider', 'x_slider_label'),
-                Label('Y:   0', 'y_slider_label'), Slider('v', -180, 180, 1, 'y_trans_slider', 'y_slider_label'),
-                Label('Z:   0', 'z_slider_label'), Slider('v', -180, 180, 1, 'z_trans_slider', 'z_slider_label'),
+                Label('X: 0', 'x_slider_label'), Slider('h', -180, 180, 1, 'x_trans_slider', 'x_slider_label'),
+                Label('Y:   0', 'y_slider_label'), Slider('h', -180, 180, 1, 'y_trans_slider', 'y_slider_label'),
+                Label('Z:   0', 'z_slider_label'), Slider('h', -180, 180, 1, 'z_trans_slider', 'z_slider_label'),
 
 
                 Button('Reset LUT', widget_map['button_controller'].ResetLUT, 'reset_lut_button'),
-                Label('Min: 0', 'min_lut_label'), Slider('v', 0, 50000, 50, 'min_lut_slider', 'min_lut_label'),
+                Label('Min: 0', 'min_lut_label'), Slider('h', 0, 20000, 50, 'min_lut_slider', 'min_lut_label'),
                 Label('Max: 500', 'max_lut_label'), Slider('h', 0, 1000000, 500, 'max_lut_slider', 'max_lut_label'),
             ])
     #widget_map['vtk_widget_frame'] = Frame('v',[]) #None #QtWidgets.QWidget([])
