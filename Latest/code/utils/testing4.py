@@ -202,7 +202,9 @@ class CoordinateFrame(object):
 
 
     def Get(self):
-        return self.m.GetVnlMatrix()
+        res  =self.m.GetVnlMatrix()
+
+        return [res.get(0), res.get(1), res.get(2)]
 
 
     def Print(self):
@@ -241,7 +243,10 @@ class CoordinateFrame(object):
         val[0] = float(spc[0])
         val[1] = float(spc[1])
         val[2] = float(spc[2])
-        self.spacing = val
+        self.spacing.GetVnlMatrix().set(0, 0, val[0])
+        self.spacing.GetVnlMatrix().set(1, 1, val[1])
+        self.spacing.GetVnlMatrix().set(2, 2, val[2])
+        print(self.spacing)
 
 
     def SetIndex(self, idx):
@@ -257,10 +262,10 @@ class CoordinateFrame(object):
         self.direction.GetVnlMatrix().set(1, 0, dmat[1][0])
         self.direction.GetVnlMatrix().set(2, 0, dmat[2][0])
         self.direction.GetVnlMatrix().set(0, 1, dmat[0][1])
-        self.direction.GetVnlMatrix().set(2, 1, dmat[1][1])
+        self.direction.GetVnlMatrix().set(1, 1, dmat[1][1])
         self.direction.GetVnlMatrix().set(2, 1, dmat[2][1])
         self.direction.GetVnlMatrix().set(0, 2, dmat[0][2])
-        self.direction.GetVnlMatrix().set(2, 2, dmat[1][2])
+        self.direction.GetVnlMatrix().set(1, 2, dmat[1][2])
         self.direction.GetVnlMatrix().set(2, 2, dmat[2][2])
         print(self.direction)
 
@@ -274,9 +279,10 @@ class CoordinateFrame(object):
 
 
     #   tbd - float + vector?  both should be vector
-    def GetPhysicalCoordinate(self):
-        self.m = (self.direction * self.spacing) * self.index + self.origin
-        return self.m
+    def SolvePhysicalCoordinate(self):
+        #self.m = (self.direction * self.spacing) * self.index + self.origin
+        res = (self.direction * self.spacing * self.index) + self.origin
+        return  res.GetVnlVector() #((self.spacing * self.index  ) *  ) #+ self.origin
 
 
 #    def Update(self):
@@ -679,6 +685,7 @@ class Slider(QtWidgets.QSlider):
         #   apply transformation
         transformation = widget_map['model_matrix'].ToVtkTransform()
         widget_map['mri_actor'].SetUserTransform(transformation)
+        widget_map['plane_actor'].SetUserTransform(transformation)
         widget_map['landmark_list'].Reset()
 
         for la in widget_map['landmark_actors']:
@@ -1429,12 +1436,10 @@ def MriVolumeRenderTest():
     img2phys.SetSpacing([spacing[1], spacing[2], spacing[3]])
     img2phys.SetIndex([c_of_mass[0], c_of_mass[1], c_of_mass[2]])
     img2phys.SetDirection(widget_map['mri_nifti_ptr'].GetHeader().get_qform())
-
+    mri_com = img2phys.SolvePhysicalCoordinate()
+    #$mri_com = img2phys.Get()
     #   tbd fix this
-    #print(str(img2phys.GetPhysicalCoordinate()))
-
-
-    #dataImporter.SetDataOrigin(origin[0:3])
+    print("MRI COM -> " + str(mri_com))
 
     # For some reason we need to invert the img_data_shape indexing (figure out what the strategy is in general)
     dataImporter.SetDataExtent(0, img_data_shape[2] - 1, 0, img_data_shape[1] - 1, 0, img_data_shape[0] - 1)
@@ -1483,6 +1488,12 @@ def MriVolumeRenderTest():
     volume.SetProperty(widget_map['mri_volume_property'])
 
     widget_map['mri_actor'] = volume
+
+    # works for now... but needs a better solution
+    widget_map['model_matrix'].TranslateX(mri_com.get(0))
+    widget_map['model_matrix'].TranslateY(mri_com.get(1))
+    widget_map['model_matrix'].TranslateZ(mri_com.get(2))
+    #widget_map['mri_actor'].Translate(mri_com.get(0), mri_com.get(1), mri_com.get(2))
 
     return widget_map['mri_actor']
 
