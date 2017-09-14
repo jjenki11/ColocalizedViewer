@@ -13,6 +13,9 @@ import numpy as np
 
 import nibabel as nib
 
+
+#from scipy import ndimage
+
 #from widgets import *
 from JWidgets import *
 
@@ -74,6 +77,15 @@ class UiUtils(object):
         else:
             tiffFile.SetFileName('/stbb_home/jenkinsjc/Desktop/LandmarkTesting/76.tif');
 
+        """
+        reader.SetDataExtent(self.DataExtent)
+            reader.SetDataSpacing(self.DataSpacing)
+            reader.SetDataOrigin(self.DataOrigin)
+            https://www.programcreek.com/python/example/65415/vtk.vtkTIFFReader
+        """
+
+
+        #tiffFile.DesiredOutputPrecision(SINGLE_PRECISION)
         tiffFile.Update()
 
         min_val = widget_map['mri_nifti_ptr'].GetMin()
@@ -81,7 +93,8 @@ class UiUtils(object):
         spacing = widget_map['mri_nifti_ptr'].GetVoxelSize()
         origin = widget_map['mri_nifti_ptr'].GetOrigin()
 
-        mri_center = widget_map['mri_actor'].GetCenter()
+
+        center = widget_map['mri_actor'].GetCenter()
 
         pixel_size = .1
         tiff_dims = tiffFile.GetOutput().GetExtent()
@@ -101,6 +114,8 @@ class UiUtils(object):
         #widget_map['plane_widget'].SetCenter(rows*pixel_size, cols*pixel_size, 0.0)
         #widget_map['plane_widget'].SetXResolution(int(1 ))
         #widget_map['plane_widget'].SetYResolution(int(1 ))
+
+        #widget_map['plane_widget'].SetCenter(widget_map['mri_com'])
 
         widget_map['plane_widget'].Update()
 
@@ -125,7 +140,7 @@ class UiUtils(object):
         widget_map['plane_actor'].SetMapper(mapper)
         widget_map['plane_actor'].SetTexture(tex)
 
-        #widget_map['plane_actor'].SetOrigin(center[0], center[1], center[2])
+        widget_map['plane_actor'].SetOrigin(center[0], center[1], center[2])
 
 
         widget_map['vtk_widget'].SetParentActor(widget_map['plane_actor'])
@@ -176,8 +191,13 @@ def n2l(n):
 # Subclassed itk matrix 3x3
 class CoordinateFrame(object):
     def __init__(self):
-        self.m = itk.Matrix.D31()
-        self.m.SetIdentity()
+
+        Dimension = 3
+        ComponentType = itk.F
+        self.VectorType = itk.Vector[ComponentType, Dimension]
+
+        self.m = itk.Vector[ComponentType, Dimension]()
+        #self.m.SetIdentity()
 
         self.spacing = itk.Matrix.D33()
         self.spacing.SetIdentity()
@@ -185,15 +205,17 @@ class CoordinateFrame(object):
         self.direction = itk.Matrix.D33()
         self.direction.SetIdentity()
 
-        self.index = itk.Matrix.D31()
-        self.index.SetIdentity()
+        self.index = itk.Vector[ComponentType, Dimension]()
+        #self.index.SetIdentity()
 
-        self.origin = itk.Matrix.D31()
-        self.origin.SetIdentity()
+        self.origin = itk.Vector[ComponentType, Dimension]()
+        #self.origin.SetIdentity()
 
 
     def Get(self):
-        return self.m.GetVnlMatrix()
+        res  =self.m.GetVnlMatrix()
+
+        return [res.get(0), res.get(1), res.get(2)]
 
 
     def Print(self):
@@ -227,30 +249,71 @@ class CoordinateFrame(object):
         print("")
         #self.Update()
 
-    def SetSpacing(self, sx, sy, sz):
-        self.spacing.GetVnlMatrix().set(0, 0, sx)
-        self.spacing.GetVnlMatrix().set(1, 1, sy)
-        self.spacing.GetVnlMatrix().set(2, 2, sz)
+    def SetSpacing(self, spc):
+        val = self.VectorType()
+        val[0] = float(spc[0])
+        val[1] = float(spc[1])
+        val[2] = float(spc[2])
+        self.spacing.GetVnlMatrix().set(0, 0, val[0])
+        self.spacing.GetVnlMatrix().set(1, 1, val[1])
+        self.spacing.GetVnlMatrix().set(2, 2, val[2])
+        print(self.spacing)
 
 
-    def SetIndex(self, ix, iy, iz):
-        self.index.GetVnlMatrix().set(0, 0, ix)
-        self.index.GetVnlMatrix().set(1, 0, iy)
-        self.index.GetVnlMatrix().set(2, 0, iz)
-        #self.Update()
+    def SetIndex(self, idx):
+        val = self.VectorType()
+        val[0] = float(idx[0])
+        val[1] = float(idx[1])
+        val[2] = float(idx[2])
+        self.index = val
 
     def SetDirection(self, dmat):
-        pass
+        #self.direction = dmat
+        self.direction.GetVnlMatrix().set(0, 0, dmat[0][0])
+        self.direction.GetVnlMatrix().set(1, 0, dmat[1][0])
+        self.direction.GetVnlMatrix().set(2, 0, dmat[2][0])
+        self.direction.GetVnlMatrix().set(0, 1, dmat[0][1])
+        self.direction.GetVnlMatrix().set(1, 1, dmat[1][1])
+        self.direction.GetVnlMatrix().set(2, 1, dmat[2][1])
+        self.direction.GetVnlMatrix().set(0, 2, dmat[0][2])
+        self.direction.GetVnlMatrix().set(1, 2, dmat[1][2])
+        self.direction.GetVnlMatrix().set(2, 2, dmat[2][2])
+        print(self.direction)
 
-    def SetOrigin(self, ox, oy, oz):
-        self.origin.GetVnlMatrix().set(0, 0, ox)
-        self.origin.GetVnlMatrix().set(1, 0, oy)
-        self.origin.GetVnlMatrix().set(2, 0, oz)
+
+    def SetOrigin(self, ogn):
+        val = self.VectorType()
+        val[0] = float(ogn[0])
+        val[1] = float(ogn[1])
+        val[2] = float(ogn[2])
+        self.origin = val
 
 
-    def GetPhysicalCoordinate(self):
-        self.m = (self.direction * self.spacing * self.index) + self.origin
-        return self.m
+    #   tbd - float + vector?  both should be vector
+    def SolvePhysicalCoordinate(self):
+        #self.m = (self.direction * self.spacing) * self.index + self.origin
+        # offsest the center of mass
+        '''
+        new_coord = self.VectorType()
+        new_coord[0] = float(res.GetVnlVector().get(0) - self.origin.GetVnlVector.get(0))
+        new_coord[1] = float( res.GetVnlVector().get(1) - self.origin.GetVnlVector.get(1))
+        new_coord[2] = float(res.GetVnlVector().get(2) - self.origin.GetVnlVector.get(2))
+        '''
+
+        return  (self.direction * self.spacing * self.index) + self.origin
+
+    def SolvePhysicalCoordinateForIndex(self, idx):
+        #self.m = (self.direction * self.spacing) * self.index + self.origin
+        # offsest the center of mass
+        '''
+        new_coord = self.VectorType()
+        new_coord[0] = float(res.GetVnlVector().get(0) - self.origin.GetVnlVector.get(0))
+        new_coord[1] = float( res.GetVnlVector().get(1) - self.origin.GetVnlVector.get(1))
+        new_coord[2] = float(res.GetVnlVector().get(2) - self.origin.GetVnlVector.get(2))
+        '''
+        self.SetIndex(idx)
+
+        return  self.SolvePhysicalCoordinate()
 
 
 #    def Update(self):
@@ -397,6 +460,9 @@ class Matrix4(object):
         self.Update()
 
     def RotateZ(self, rot):
+
+        #translate to origin
+
         self.rz.GetVnlMatrix().set(0, 0, math.cos(rot))
         self.rz.GetVnlMatrix().set(0, 1, -math.sin(rot))
         self.rz.GetVnlMatrix().set(1, 0, math.sin(rot))
@@ -413,6 +479,12 @@ class Matrix4(object):
 
     def TranslateZ(self, trans):
         self.tz.GetVnlMatrix().set(2, 3, trans)
+        self.Update()
+
+    def Translate(self, trans_x, trans_y, trans_z):
+        self.TranslateX(trans_x)
+        self.TranslateY(trans_y)
+        self.TranslateZ(trans_z)
         self.Update()
 
     def ScaleX(self, scl):
@@ -653,6 +725,7 @@ class Slider(QtWidgets.QSlider):
         #   apply transformation
         transformation = widget_map['model_matrix'].ToVtkTransform()
         widget_map['mri_actor'].SetUserTransform(transformation)
+        #widget_map['plane_actor'].SetUserTransform(transformation)
         widget_map['landmark_list'].Reset()
 
         for la in widget_map['landmark_actors']:
@@ -1307,8 +1380,14 @@ class NiftiFile(object):
     def PrintHeader(self):
         print(self.header)
 
+    def GetHeader(self):
+        return self.header
+
     def GetData(self):
         return self.data.get_data()
+
+    def GetShape(self):
+        return self.GetData().shape
 
     def ToString(self):
         return self.GetData().tostring()
@@ -1326,6 +1405,25 @@ class NiftiFile(object):
         self.data.set_data_dtype(t)
         print("Data type set to: " + str(t))
 
+    def ComputeCenterOfMass(self):
+
+        img_data = self.GetData()
+        img_data_shape = img_data.shape
+
+        numpyVol = np.array(img_data)
+        new_vol_arr = []
+
+        #   works but is slow
+        for i in range(0, img_data_shape[2] - 1):
+            for j in range(0, img_data_shape[1] - 1):
+                for k in range(0, img_data_shape[0] - 1):
+                    new_vol_arr.append([k, j, i, img_data[k, j, i]])
+
+        nva = np.array(new_vol_arr)
+        nonZeroMasses = nva[np.nonzero(nva[:, 3])]
+        CM = np.average(nonZeroMasses[:, :3], axis=0, weights=nonZeroMasses[:, 3])
+        return [CM[0], CM[1], CM[2]]
+
 
 def MriVolumeRenderTest():
     # We begin by creating the data we want to render.
@@ -1336,7 +1434,7 @@ def MriVolumeRenderTest():
     widget_map['mri_nifti_ptr'] = NiftiFile()
 
     if (home_pc):
-        widget_map['mri_nifti_ptr'].ReadFile(os.getcwd() + '\\data\\structural_test.nii')
+        widget_map['mri_nifti_ptr'].ReadFile(os.getcwd() + '\\data\\structural_test_short.nii')
 
     elif(from_gui):
         widget_map['mri_nifti_ptr'].ReadFile(widget_map['mri_file'].GetText())
@@ -1344,21 +1442,23 @@ def MriVolumeRenderTest():
     else:
         widget_map['mri_nifti_ptr'].ReadFile('/stbb_home/jenkinsjc/dev/ColocalizedViewer/Latest/data/structural_test.nii')
 
-    widget_map['mri_nifti_ptr'].SetType(np.uint8)
+
+    #   what is the difference between uint8 and uint16 for short?
+    widget_map['mri_nifti_ptr'].SetType(np.uint16)
 
     min_val = widget_map['mri_nifti_ptr'].GetMin()
     max_val = widget_map['mri_nifti_ptr'].GetMax()
     spacing = widget_map['mri_nifti_ptr'].GetVoxelSize()
     origin  = widget_map['mri_nifti_ptr'].GetOrigin()
-    #direction = widget_map['mri_nifti_ptr'].GetDirection()
+
+
+    print(str(widget_map['mri_nifti_ptr'].GetHeader().get_qform()))
 
 
 
-
-    img_data = widget_map['mri_nifti_ptr'].GetData()
-
-    # img_data = nifti.GetData()
-    img_data_shape = img_data.shape
+    c_of_mass = widget_map['mri_nifti_ptr'].ComputeCenterOfMass()
+    img_data_shape = widget_map['mri_nifti_ptr'].GetShape()
+    #print("CENTER OF MAZZ ->  " + str(CM))
 
     dataImporter = vtk.vtkImageImport()
     dataImporter.SetDataScalarTypeToUnsignedShort()
@@ -1371,13 +1471,15 @@ def MriVolumeRenderTest():
 
     #   TBD fix the coordinateframe matrix
 
-    #img2phys = CoordinateFrame()
-    #img2phys.SetOrigin(origin[0:3])
-    #img2phys.SetSpacing(spacing[1:4])
-    #img2phys.SetIndex()
-
-
-    #dataImporter.SetDataOrigin(origin[0:3])
+    img2phys = CoordinateFrame()
+    img2phys.SetOrigin([origin[0], origin[1], origin[2]])
+    img2phys.SetSpacing([spacing[1], spacing[2], spacing[3]])
+    img2phys.SetIndex([c_of_mass[0], c_of_mass[1], c_of_mass[2]])
+    img2phys.SetDirection(widget_map['mri_nifti_ptr'].GetHeader().get_qform())
+    widget_map['mri_com'] =  img2phys.SolvePhysicalCoordinate()
+    #$mri_com = img2phys.Get()
+    #   tbd fix this
+    #print("MRI COM -> " + str(mri_com))
 
     # For some reason we need to invert the img_data_shape indexing (figure out what the strategy is in general)
     dataImporter.SetDataExtent(0, img_data_shape[2] - 1, 0, img_data_shape[1] - 1, 0, img_data_shape[0] - 1)
@@ -1409,6 +1511,7 @@ def MriVolumeRenderTest():
     # volumeProperty = vtk.vtkVolumeProperty()
     widget_map['mri_volume_property'].SetColor(xferFunc)
     widget_map['mri_volume_property'].SetScalarOpacity(alphaChannelFunc)
+    widget_map['mri_volume_property'].SetInterpolationTypeToNearest()
     #widget_map['mri_volume_property'].ShadeOn()        #not sure what this does
 
     # This class describes how the volume is rendered (through ray tracing).
@@ -1426,6 +1529,19 @@ def MriVolumeRenderTest():
     volume.SetProperty(widget_map['mri_volume_property'])
 
     widget_map['mri_actor'] = volume
+
+    idx_pt = img2phys.SolvePhysicalCoordinateForIndex(origin)
+
+
+
+
+
+    # works for now... but needs a better solution
+    #widget_map['model_matrix'].TranslateX(idx_pt.GetVnlVector().get(1))
+    #widget_map['model_matrix'].TranslateY(idx_pt.GetVnlVector().get(1))
+    #widget_map['model_matrix'].TranslateZ(idx_pt.GetVnlVector().get(2))
+
+    #widget_map['mri_actor'].Translate(mri_com.get(0), mri_com.get(1), mri_com.get(2))
 
     return widget_map['mri_actor']
 
@@ -1536,6 +1652,7 @@ def QVTKRenderWidgetMain():
     widget_map['vtk_widget'].AddObserver("ExitEvent", lambda o, e, a=widget_map['main_application']: a.quit())
 
     widget_map['v_ren'] = vtk.vtkRenderer()
+    #widget_map['v_ren'].ComputeVisiblePropBounds()
 
     widget_map['vtk_widget'].GetRenderWindow().AddRenderer(widget_map['v_ren'])
 
@@ -1566,8 +1683,8 @@ def QVTKRenderWidgetMain():
 
 
                 Button('Reset LUT', widget_map['button_controller'].ResetLUT, 'reset_lut_button'),
-                Label('Min: 0', 'min_lut_label'), Slider('h', 0, 1000000, 9000, 'min_lut_slider', 'min_lut_label'),
-                Label('Max: 500', 'max_lut_label'), Slider('h', 0, 1000000, 1000000, 'max_lut_slider', 'max_lut_label'),
+                Label('Min: 0', 'min_lut_label'), Slider('h', 0, 20000, 50, 'min_lut_slider', 'min_lut_label'),
+                Label('Max: 500', 'max_lut_label'), Slider('h', 0, 1000000, 500, 'max_lut_slider', 'max_lut_label'),
             ])
     #widget_map['vtk_widget_frame'] = Frame('v',[]) #None #QtWidgets.QWidget([])
     #widget_map['vtk_widget_frame'] = VBox([])
