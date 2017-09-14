@@ -153,9 +153,9 @@ filebox_width = 150;
 default_min_lut = 0.0;
 default_max_lut = 500.0;
 
-home_pc = False;
+home_pc = True;
 
-from_gui = True;
+from_gui = False;
 
 
 # Register widget by nam e to our global mapping
@@ -281,8 +281,28 @@ class CoordinateFrame(object):
     #   tbd - float + vector?  both should be vector
     def SolvePhysicalCoordinate(self):
         #self.m = (self.direction * self.spacing) * self.index + self.origin
-        res = (self.direction * self.spacing * self.index) + self.origin
-        return  res.GetVnlVector() #((self.spacing * self.index  ) *  ) #+ self.origin
+        # offsest the center of mass
+        '''
+        new_coord = self.VectorType()
+        new_coord[0] = float(res.GetVnlVector().get(0) - self.origin.GetVnlVector.get(0))
+        new_coord[1] = float( res.GetVnlVector().get(1) - self.origin.GetVnlVector.get(1))
+        new_coord[2] = float(res.GetVnlVector().get(2) - self.origin.GetVnlVector.get(2))
+        '''
+
+        return  (self.direction * self.spacing * self.index) + self.origin
+
+    def SolvePhysicalCoordinateForIndex(self, idx):
+        #self.m = (self.direction * self.spacing) * self.index + self.origin
+        # offsest the center of mass
+        '''
+        new_coord = self.VectorType()
+        new_coord[0] = float(res.GetVnlVector().get(0) - self.origin.GetVnlVector.get(0))
+        new_coord[1] = float( res.GetVnlVector().get(1) - self.origin.GetVnlVector.get(1))
+        new_coord[2] = float(res.GetVnlVector().get(2) - self.origin.GetVnlVector.get(2))
+        '''
+        self.SetIndex(idx)
+
+        return  self.SolvePhysicalCoordinate()
 
 
 #    def Update(self):
@@ -429,6 +449,9 @@ class Matrix4(object):
         self.Update()
 
     def RotateZ(self, rot):
+
+        #translate to origin
+
         self.rz.GetVnlMatrix().set(0, 0, math.cos(rot))
         self.rz.GetVnlMatrix().set(0, 1, -math.sin(rot))
         self.rz.GetVnlMatrix().set(1, 0, math.sin(rot))
@@ -445,6 +468,12 @@ class Matrix4(object):
 
     def TranslateZ(self, trans):
         self.tz.GetVnlMatrix().set(2, 3, trans)
+        self.Update()
+
+    def Translate(self, trans_x, trans_y, trans_z):
+        self.TranslateX(trans_x)
+        self.TranslateY(trans_y)
+        self.TranslateZ(trans_z)
         self.Update()
 
     def ScaleX(self, scl):
@@ -1394,7 +1423,7 @@ def MriVolumeRenderTest():
     widget_map['mri_nifti_ptr'] = NiftiFile()
 
     if (home_pc):
-        widget_map['mri_nifti_ptr'].ReadFile(os.getcwd() + '\\data\\structural_test.nii')
+        widget_map['mri_nifti_ptr'].ReadFile(os.getcwd() + '\\data\\structural_test_short.nii')
 
     elif(from_gui):
         widget_map['mri_nifti_ptr'].ReadFile(widget_map['mri_file'].GetText())
@@ -1436,10 +1465,10 @@ def MriVolumeRenderTest():
     img2phys.SetSpacing([spacing[1], spacing[2], spacing[3]])
     img2phys.SetIndex([c_of_mass[0], c_of_mass[1], c_of_mass[2]])
     img2phys.SetDirection(widget_map['mri_nifti_ptr'].GetHeader().get_qform())
-    mri_com = img2phys.SolvePhysicalCoordinate()
+    widget_map['mri_com'] =  img2phys.SolvePhysicalCoordinate()
     #$mri_com = img2phys.Get()
     #   tbd fix this
-    print("MRI COM -> " + str(mri_com))
+    #print("MRI COM -> " + str(mri_com))
 
     # For some reason we need to invert the img_data_shape indexing (figure out what the strategy is in general)
     dataImporter.SetDataExtent(0, img_data_shape[2] - 1, 0, img_data_shape[1] - 1, 0, img_data_shape[0] - 1)
@@ -1489,10 +1518,17 @@ def MriVolumeRenderTest():
 
     widget_map['mri_actor'] = volume
 
+    idx_pt = img2phys.SolvePhysicalCoordinateForIndex(origin)
+
+
+
+
+
     # works for now... but needs a better solution
-    widget_map['model_matrix'].TranslateX(mri_com.get(0))
-    widget_map['model_matrix'].TranslateY(mri_com.get(1))
-    widget_map['model_matrix'].TranslateZ(mri_com.get(2))
+    #widget_map['model_matrix'].TranslateX(idx_pt.GetVnlVector().get(1))
+    #widget_map['model_matrix'].TranslateY(idx_pt.GetVnlVector().get(1))
+    #widget_map['model_matrix'].TranslateZ(idx_pt.GetVnlVector().get(2))
+
     #widget_map['mri_actor'].Translate(mri_com.get(0), mri_com.get(1), mri_com.get(2))
 
     return widget_map['mri_actor']
@@ -1604,6 +1640,7 @@ def QVTKRenderWidgetMain():
     widget_map['vtk_widget'].AddObserver("ExitEvent", lambda o, e, a=widget_map['main_application']: a.quit())
 
     widget_map['v_ren'] = vtk.vtkRenderer()
+    #widget_map['v_ren'].ComputeVisiblePropBounds()
 
     widget_map['vtk_widget'].GetRenderWindow().AddRenderer(widget_map['v_ren'])
 
@@ -1618,24 +1655,24 @@ def QVTKRenderWidgetMain():
 
 
                 Button('Reset scale', widget_map['button_controller'].ResetScale, 'reset_scale_button'),
-                Label('sX:   0', 'sx_slider_label'), Slider('h', 0.00001, 10, 1, 'x_scale_slider', 'sx_slider_label'),
-                Label('sY:   0', 'sy_slider_label'), Slider('h', 0.00001, 10, 1, 'y_scale_slider', 'sy_slider_label'),
-                Label('sZ:   0', 'sz_slider_label'), Slider('h', 0.00001, 10, 1, 'z_scale_slider', 'sz_slider_label'),
+                Label('sX:   0', 'sx_slider_label'), Slider('v', 0.00001, 10, 1, 'x_scale_slider', 'sx_slider_label'),
+                Label('sY:   0', 'sy_slider_label'), Slider('v', 0.00001, 10, 1, 'y_scale_slider', 'sy_slider_label'),
+                Label('sZ:   0', 'sz_slider_label'), Slider('v', 0.00001, 10, 1, 'z_scale_slider', 'sz_slider_label'),
 
                 Button('Reset rotation', widget_map['button_controller'].ResetRotation, 'reset_rotation_button'),
-                Label('Theta: 0', 'theta_slider_label'), Slider('h', -180, 180, 1, 'theta_rot_slider', 'theta_slider_label'),
-                Label('Phi:   0', 'phi_slider_label'), Slider('h', -180, 180, 1, 'phi_rot_slider', 'phi_slider_label'),
-                Label('Rho:   0', 'rho_slider_label'), Slider('h', -180, 180, 1, 'rho_rot_slider', 'rho_slider_label'),
+                Label('Theta: 0', 'theta_slider_label'), Slider('v', -180, 180, 1, 'theta_rot_slider', 'theta_slider_label'),
+                Label('Phi:   0', 'phi_slider_label'), Slider('v', -180, 180, 1, 'phi_rot_slider', 'phi_slider_label'),
+                Label('Rho:   0', 'rho_slider_label'), Slider('v', -180, 180, 1, 'rho_rot_slider', 'rho_slider_label'),
 
                 Button('Reset translation', widget_map['button_controller'].ResetTranslation, 'reset_translation_button'),
-                Label('X: 0', 'x_slider_label'), Slider('h', -180, 180, 1, 'x_trans_slider', 'x_slider_label'),
-                Label('Y:   0', 'y_slider_label'), Slider('h', -180, 180, 1, 'y_trans_slider', 'y_slider_label'),
-                Label('Z:   0', 'z_slider_label'), Slider('h', -180, 180, 1, 'z_trans_slider', 'z_slider_label'),
+                Label('X: 0', 'x_slider_label'), Slider('v', -180, 180, 1, 'x_trans_slider', 'x_slider_label'),
+                Label('Y:   0', 'y_slider_label'), Slider('v', -180, 180, 1, 'y_trans_slider', 'y_slider_label'),
+                Label('Z:   0', 'z_slider_label'), Slider('v', -180, 180, 1, 'z_trans_slider', 'z_slider_label'),
 
 
                 Button('Reset LUT', widget_map['button_controller'].ResetLUT, 'reset_lut_button'),
-                Label('Min: 0', 'min_lut_label'), Slider('h', 0, 1000000, 9000, 'min_lut_slider', 'min_lut_label'),
-                Label('Max: 500', 'max_lut_label'), Slider('h', 0, 1000000, 1000000, 'max_lut_slider', 'max_lut_label'),
+                Label('Min: 0', 'min_lut_label'), Slider('v', 0, 50000, 50, 'min_lut_slider', 'min_lut_label'),
+                Label('Max: 500', 'max_lut_label'), Slider('h', 0, 1000000, 500, 'max_lut_slider', 'max_lut_label'),
             ])
     #widget_map['vtk_widget_frame'] = Frame('v',[]) #None #QtWidgets.QWidget([])
     #widget_map['vtk_widget_frame'] = VBox([])
