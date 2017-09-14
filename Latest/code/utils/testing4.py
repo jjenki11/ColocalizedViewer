@@ -685,7 +685,7 @@ class Slider(QtWidgets.QSlider):
         #   apply transformation
         transformation = widget_map['model_matrix'].ToVtkTransform()
         widget_map['mri_actor'].SetUserTransform(transformation)
-        widget_map['plane_actor'].SetUserTransform(transformation)
+        #widget_map['plane_actor'].SetUserTransform(transformation)
         widget_map['landmark_list'].Reset()
 
         for la in widget_map['landmark_actors']:
